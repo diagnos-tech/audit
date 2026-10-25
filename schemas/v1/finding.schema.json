@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/finding.schema.json",
+  "title": "Finding",
+  "description": "Evidence that a log misbehaved: a checkpoint signed by the log that conflicts with a tree head the witness already cosigned. Stored at data/v1/<log>/findings/YYYY/MM/DD/HHMMSSZ.json and never rewritten. The witness stops cosigning the log after a finding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "log", "origin", "detectedAt", "kind", "summary", "witnessed", "observed", "consistency"],
+  "properties": {
+    "schema": { "const": "finding/v1" },
+    "log": { "$ref": "defs.schema.json#/$defs/logName" },
+    "origin": { "$ref": "defs.schema.json#/$defs/origin" },
+    "detectedAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "kind": { "$ref": "defs.schema.json#/$defs/findingKind" },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 280 },
+    "witnessed": {
+      "description": "The last tree head the witness cosigned, with the cosigned checkpoint and its record.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["size", "root", "note", "record"],
+      "properties": {
+        "size": { "$ref": "defs.schema.json#/$defs/treeSize" },
+        "root": { "$ref": "defs.schema.json#/$defs/treeHash" },
+        "note": { "$ref": "defs.schema.json#/$defs/signedNote" },
+        "record": { "$ref": "defs.schema.json#/$defs/witnessPath" }
+      }
+    },
+    "observed": {
+      "description": "The conflicting checkpoint, as the log served it, with the log's own signature.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["size", "root", "note"],
+      "properties": {
+        "size": { "$ref": "defs.schema.json#/$defs/treeSize" },
+        "root": { "$ref": "defs.schema.json#/$defs/treeHash" },
+        "note": { "$ref": "defs.schema.json#/$defs/signedNote" }
+      }
+    },
+    "consistency": {
+      "$ref": "defs.schema.json#/$defs/consistencyProof",
+      "description": "For kind inconsistent: the proof the log served, which does not verify. Empty otherwise."
+    }
+  }
+}

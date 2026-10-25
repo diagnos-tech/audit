@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/latest.schema.json",
+  "title": "Latest summary",
+  "description": "Everything the page shows first, so one small request paints the status: the latest witnessed tree head of each log, the latest hourly timestamp, every finding and the months that have an index. Stored at data/v1/latest.json and rewritten on every commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "updatedAt", "witness", "logs", "timestamp", "findings", "months"],
+  "properties": {
+    "schema": { "const": "latest/v1" },
+    "updatedAt": {
+      "$ref": "defs.schema.json#/$defs/time",
+      "description": "When the run that wrote this commit finished. The witness commits at least hourly, so an old value means the witness is not running."
+    },
+    "witness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "keyHash"],
+      "properties": {
+        "name": { "$ref": "defs.schema.json#/$defs/keyName" },
+        "keyHash": { "$ref": "defs.schema.json#/$defs/keyHash" }
+      }
+    },
+    "logs": {
+      "type": "object",
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/logName" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["origin", "url", "checkedAt", "size", "root", "witnessedAt", "record", "previousSize"],
+        "properties": {
+          "origin": { "$ref": "defs.schema.json#/$defs/origin" },
+          "url": { "$ref": "defs.schema.json#/$defs/logUrl" },
+          "checkedAt": {
+            "$ref": "defs.schema.json#/$defs/time",
+            "description": "The last run that fetched and verified this log's checkpoint, whether or not the tree grew."
+          },
+          "size": { "$ref": "defs.schema.json#/$defs/treeSize" },
+          "root": { "$ref": "defs.schema.json#/$defs/treeHash" },
+          "witnessedAt": { "$ref": "defs.schema.json#/$defs/time" },
+          "record": { "$ref": "defs.schema.json#/$defs/witnessPath" },
+          "previousSize": {
+            "description": "The size before the latest growth, or null for the first record.",
+            "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/treeSize" }]
+          }
+        }
+      }
+    },
+    "timestamp": {
+      "description": "The latest hourly record, or null before the first one.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hour", "record", "imprint", "token"],
+          "properties": {
+            "hour": { "$ref": "defs.schema.json#/$defs/hour" },
+            "record": { "$ref": "defs.schema.json#/$defs/timestampPath" },
+            "imprint": { "$ref": "defs.schema.json#/$defs/sha256" },
+            "token": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["provider", "genTime", "file"],
+                  "properties": {
+                    "provider": { "$ref": "defs.schema.json#/$defs/provider" },
+                    "genTime": { "$ref": "defs.schema.json#/$defs/time" },
+                    "file": { "$ref": "defs.schema.json#/$defs/tokenPath" }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "findings": {
+      "description": "Every finding ever recorded, newest first. Expected to stay empty.",
+      "type": "array",
+      "items": { "$ref": "defs.schema.json#/$defs/findingSummary" }
+    },
+    "months": {
+      "description": "Months that have an index at data/v1/index/YYYY/MM.json, newest first.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "defs.schema.json#/$defs/month" }
+    }
+  }
+}

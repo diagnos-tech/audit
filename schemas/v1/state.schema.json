@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/state.schema.json",
+  "title": "Witness state",
+  "description": "What the witness reads back at the start of every run: the last witnessed tree head of each log and the last hourly record, which the next hour links to. Stored at data/v1/state.json and rewritten on every commit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "updatedAt", "logs", "timestamp"],
+  "properties": {
+    "schema": { "const": "state/v1" },
+    "updatedAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "logs": {
+      "type": "object",
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/logName" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["origin", "size", "root", "record", "witnessedAt"],
+        "properties": {
+          "origin": { "$ref": "defs.schema.json#/$defs/origin" },
+          "size": { "$ref": "defs.schema.json#/$defs/treeSize" },
+          "root": { "$ref": "defs.schema.json#/$defs/treeHash" },
+          "record": { "$ref": "defs.schema.json#/$defs/witnessPath" },
+          "witnessedAt": { "$ref": "defs.schema.json#/$defs/time" }
+        }
+      }
+    },
+    "timestamp": {
+      "description": "The last hourly record, or null before the first one.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hour", "record", "sha256"],
+          "properties": {
+            "hour": { "$ref": "defs.schema.json#/$defs/hour" },
+            "record": { "$ref": "defs.schema.json#/$defs/timestampPath" },
+            "sha256": { "$ref": "defs.schema.json#/$defs/sha256" }
+          }
+        }
+      ]
+    }
+  }
+}

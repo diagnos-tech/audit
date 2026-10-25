@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/witness.schema.json",
+  "title": "Witness record",
+  "description": "One witnessed checkpoint: the log's signed checkpoint with the witness cosignature appended, and the RFC 9162 consistency proof from the previous witnessed size. Stored at data/v1/<log>/witness/YYYY/MM/DD/HHMMSSZ.json and never rewritten.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "log", "origin", "url", "witnessedAt", "checkpoint", "cosignature", "previous", "consistency"],
+  "properties": {
+    "schema": { "const": "witness/v1" },
+    "log": { "$ref": "defs.schema.json#/$defs/logName" },
+    "origin": { "$ref": "defs.schema.json#/$defs/origin" },
+    "url": { "$ref": "defs.schema.json#/$defs/logUrl" },
+    "witnessedAt": {
+      "$ref": "defs.schema.json#/$defs/time",
+      "description": "Equal to the timestamp inside the cosignature. The file name is derived from it."
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["size", "root", "note"],
+      "properties": {
+        "size": { "$ref": "defs.schema.json#/$defs/treeSize", "minimum": 1 },
+        "root": { "$ref": "defs.schema.json#/$defs/treeHash" },
+        "note": {
+          "$ref": "defs.schema.json#/$defs/signedNote",
+          "description": "The cosigned checkpoint: origin, size and root lines (plus any extension lines), a blank line, the log's signature line and the witness's cosignature/v1 line. size and root above repeat what this text says."
+        }
+      }
+    },
+    "cosignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "keyHash"],
+      "properties": {
+        "name": { "$ref": "defs.schema.json#/$defs/keyName" },
+        "keyHash": { "$ref": "defs.schema.json#/$defs/keyHash" }
+      }
+    },
+    "previous": {
+      "description": "The tree head of the previous witness record for this log, or null for the first one (trust on first use).",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["size", "root", "record"],
+          "properties": {
+            "size": { "$ref": "defs.schema.json#/$defs/treeSize", "minimum": 1 },
+            "root": { "$ref": "defs.schema.json#/$defs/treeHash" },
+            "record": { "$ref": "defs.schema.json#/$defs/witnessPath" }
+          }
+        }
+      ]
+    },
+    "consistency": {
+      "$ref": "defs.schema.json#/$defs/consistencyProof",
+      "description": "Proof that the tree at checkpoint.size extends the tree at previous.size. Empty when previous is null."
+    }
+  },
+  "if": { "properties": { "previous": { "type": "null" } } },
+  "then": { "properties": { "consistency": { "maxItems": 0 } } },
+  "else": { "properties": { "consistency": { "minItems": 1 } } }
+}
