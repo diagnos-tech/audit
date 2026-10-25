@@ -1,0 +1,55 @@
+# Code, schemas, docs and example data. Runs on every pull request and on pushes that are not
+# only data (the witness's commits are checked by data.yml).
+name: Check
+
+on:
+  push:
+    branches: [develop]
+    paths-ignore: ["data/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tools:
+    name: Tools, schemas and examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24"
+          cache-dependency-path: tools/go.sum
+
+      - name: gofmt and go vet
+        run: |
+          unformatted="$(gofmt -l tools)"
+          if [ -n "$unformatted" ]; then echo "::error::not gofmt-ed: $unformatted"; exit 1; fi
+          go vet ./tools/...
+
+      # Includes: the committed examples equal what the generator writes, every kind of tampering is
+      # caught, consistency rebuilt from tiles, and vectors cross-checked with transparency-dev.
+      - name: go test
+        run: go test ./tools/...
+
+      - name: Examples match the schemas
+        run: tools/ci/validate-json.sh -root examples
+
+      - name: Examples verify, tokens included
+        run: go run ./tools/verify all -root examples -openssl -q
+
+      - name: Page scripts parse
+        run: |
+          for f in assets/*.js assets/views/*.js; do
+            node --input-type=module --check < "$f" || { echo "::error file=$f::does not parse"; exit 1; }
+          done
