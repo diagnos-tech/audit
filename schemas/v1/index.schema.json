@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/index.schema.json",
+  "title": "Month index",
+  "description": "A light list of the records written in one UTC month, so the page can draw the timelines without fetching every record. Stored at data/v1/index/YYYY/MM.json; only the current month's index changes. Entries are in chronological order (oldest first), the order the witness appends them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "month", "updatedAt", "logs", "timestamps", "findings"],
+  "properties": {
+    "schema": { "const": "index/v1" },
+    "month": { "$ref": "defs.schema.json#/$defs/month" },
+    "updatedAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "logs": {
+      "description": "Witness records of each log written this month.",
+      "type": "object",
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/logName" },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["at", "size", "prev", "root", "record"],
+          "properties": {
+            "at": { "$ref": "defs.schema.json#/$defs/time", "description": "witnessedAt of the record." },
+            "size": { "$ref": "defs.schema.json#/$defs/treeSize" },
+            "prev": {
+              "description": "previous.size of the record, or null for the first one; size - prev is the growth.",
+              "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/treeSize" }]
+            },
+            "root": { "$ref": "defs.schema.json#/$defs/treeHash" },
+            "record": { "$ref": "defs.schema.json#/$defs/witnessPath" }
+          }
+        }
+      }
+    },
+    "timestamps": {
+      "description": "Hourly records written this month.",
+      "type": "array",
+      "maxItems": 744,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["hour", "record", "sha256", "imprint", "prev", "provider", "genTime"],
+        "properties": {
+          "hour": { "$ref": "defs.schema.json#/$defs/hour" },
+          "record": { "$ref": "defs.schema.json#/$defs/timestampPath" },
+          "sha256": {
+            "$ref": "defs.schema.json#/$defs/sha256",
+            "description": "SHA-256 of the bytes of the record file: what the next hour's subject.prev.sha256 must equal."
+          },
+          "imprint": { "$ref": "defs.schema.json#/$defs/sha256" },
+          "prev": {
+            "description": "subject.prev.sha256 of the record, or null for the first one.",
+            "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/sha256" }]
+          },
+          "provider": {
+            "description": "The provider of the accepted token, or null when every provider failed.",
+            "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/provider" }]
+          },
+          "genTime": {
+            "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }]
+          }
+        }
+      }
+    },
+    "findings": {
+      "description": "Findings recorded this month, oldest first.",
+      "type": "array",
+      "items": { "$ref": "defs.schema.json#/$defs/findingSummary" }
+    }
+  }
+}

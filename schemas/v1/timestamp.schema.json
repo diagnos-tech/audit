@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/timestamp.schema.json",
+  "title": "Hourly timestamp record",
+  "description": "The subject of the hour (the latest witnessed tree head of every log and a hash link to the previous hourly record), its SHA-256 imprint, and the RFC 3161 token obtained for that imprint. Stored at data/v1/timestamps/YYYY/MM/DD/HHZ.json, next to the raw TimeStampResp in HHZ.tsr, and never rewritten.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "hour", "subject", "imprint", "token", "attempts"],
+  "properties": {
+    "schema": { "const": "timestamp/v1" },
+    "hour": { "$ref": "defs.schema.json#/$defs/hour" },
+    "subject": { "$ref": "#/$defs/subject" },
+    "imprint": {
+      "$ref": "defs.schema.json#/$defs/sha256",
+      "description": "SHA-256 of the RFC 8785 (JCS) serialization of subject: the message imprint sent to the TSA. Because subject holds only ASCII strings, integers, objects and null, `jq -jcS .subject` produces the same bytes."
+    },
+    "token": {
+      "description": "The accepted token, or null when every provider failed this hour (the record is still written so the gap is visible and the chain stays unbroken).",
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/token" }]
+    },
+    "attempts": {
+      "description": "Providers that failed before the accepted one (or all of them, when token is null), in the order they were tried.",
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "error"],
+        "properties": {
+          "provider": { "$ref": "defs.schema.json#/$defs/provider" },
+          "error": { "type": "string", "minLength": 1, "maxLength": 280 }
+        }
+      }
+    }
+  },
+  "if": { "properties": { "token": { "type": "null" } } },
+  "then": { "properties": { "attempts": { "minItems": 1 } } },
+  "$defs": {
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hour", "logs", "prev"],
+      "properties": {
+        "hour": { "$ref": "defs.schema.json#/$defs/hour" },
+        "logs": {
+          "description": "For each log, the latest witness record at the time of the hour.",
+          "type": "object",
+          "propertyNames": { "$ref": "defs.schema.json#/$defs/logName" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["origin", "size", "root", "record", "sha256"],
+            "properties": {
+              "origin": { "$ref": "defs.schema.json#/$defs/origin" },
+              "size": { "$ref": "defs.schema.json#/$defs/treeSize" },
+              "root": { "$ref": "defs.schema.json#/$defs/treeHash" },
+              "record": { "$ref": "defs.schema.json#/$defs/witnessPath" },
+              "sha256": {
+                "$ref": "defs.schema.json#/$defs/sha256",
+                "description": "SHA-256 of the bytes of the witness record file."
+              }
+            }
+          }
+        },
+        "prev": {
+          "description": "The previous hourly record and the SHA-256 of its bytes, or null for the first one.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["record", "sha256"],
+              "properties": {
+                "record": { "$ref": "defs.schema.json#/$defs/timestampPath" },
+                "sha256": { "$ref": "defs.schema.json#/$defs/sha256" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "token": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "url", "file", "sha256", "genTime", "serial", "policy", "tsa", "checks"],
+      "properties": {
+        "provider": { "$ref": "defs.schema.json#/$defs/provider" },
+        "url": { "type": "string", "pattern": "^https?://[^\\s]+$", "maxLength": 512 },
+        "file": { "$ref": "defs.schema.json#/$defs/tokenPath" },
+        "sha256": {
+          "$ref": "defs.schema.json#/$defs/sha256",
+          "description": "SHA-256 of the bytes of the .tsr file."
+        },
+        "genTime": {
+          "$ref": "defs.schema.json#/$defs/time",
+          "description": "TSTInfo.genTime, truncated to seconds: the time the TSA attests."
+        },
+        "serial": { "$ref": "defs.schema.json#/$defs/hex", "description": "TSTInfo.serialNumber." },
+        "policy": { "$ref": "defs.schema.json#/$defs/oid", "description": "TSTInfo.policy." },
+        "tsa": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "description": "Subject of the certificate that signed the token, for display (an RFC 2253 string; some authorities' names run to several hundred characters)."
+        },
+        "checks": {
+          "description": "What the witness checked before writing the token.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["status", "imprint", "nonce", "time", "signature"] }
+        }
+      }
+    }
+  }
+}
