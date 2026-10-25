@@ -1,0 +1,10 @@
+# Reviews for everything people change. Replace with the maintainers' team when there is one
+# (for example @diagnos-tech/transparency).
+*                    @aquelegustavo
+
+# Keys decide what verifies: every change needs a maintainer's review.
+/keys/               @aquelegustavo
+/schemas/            @aquelegustavo
+
+# data/ is written only by the witness bot, never through a pull request. Rulesets (not CODEOWNERS)
+# enforce that; see "For maintainers" in CONTRIBUTING.md.

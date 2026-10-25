@@ -1,0 +1,50 @@
+name: A record does not verify
+description: A real record in data/ fails a check from VERIFY.md.
+labels: [verification]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. A record that does not verify is exactly what this repository exists to expose.
+
+        **Keep a copy of the files exactly as you got them**: they are evidence. If you think the failure also reveals
+        a way to attack the logs, the witness or the verifier, report it privately instead (see SECURITY.md).
+
+  - type: input
+    id: record
+    attributes:
+      label: Record
+      description: The path of the file that fails, e.g. data/v1/audit/witness/2026/10/25/140503Z.json
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and full output
+      description: The exact command you ran and everything it printed.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: The output of `git rev-parse HEAD` in your clone, or "published site" if you used -root with the URL.
+    validations:
+      required: true
+
+  - type: textarea
+    id: keys
+    attributes:
+      label: Keys
+      description: Where your keys came from (this repository's keys/, a copy from elsewhere, -keys DIR).
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: go version, openssl version, operating system.
