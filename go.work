@@ -1,0 +1,6 @@
+// The Go tools live in their own module (tools/) so that the data never ends
+// up in a module zip. This workspace lets `go run ./tools/verify` work from
+// the repository root, with paths relative to it.
+go 1.24.0
+
+use ./tools
