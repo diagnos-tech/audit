@@ -1,0 +1,15 @@
+# Keeps the pinned action SHAs and the verifier's single Go dependency current.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+  - package-ecosystem: gomod
+    directory: /tools
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build

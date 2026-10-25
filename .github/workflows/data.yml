@@ -1,0 +1,94 @@
+# The witness's commits. On every push it validates the files the push added against the schemas,
+# runs the verifier on the new records, and rejects any change to an existing dated record. Every
+# week (and on demand) it checks the whole record from the first file to the last.
+name: Data
+
+on:
+  push:
+    branches: [develop]
+    paths: ["data/**", "keys/**", "schemas/**"]
+  pull_request:
+    paths: ["data/**", "keys/**"]
+  schedule:
+    - cron: "23 5 * * 1" # Mondays 05:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  data:
+    name: Records
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.24"
+          cache-dependency-path: tools/go.sum
+
+      - name: What changed
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != push ] && [ "$EVENT" != pull_request ] || [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ]; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags --depth=1 origin "$BEFORE"
+
+          # Dated records are immutable: the hourly chain pins their exact bytes. Only the summaries
+          # (latest.json, state.json, month indexes) may change.
+          rewritten="$(git diff --name-only --diff-filter=DMRT "$BEFORE" HEAD -- data/ \
+            ':(exclude)data/v1/latest.json' ':(exclude)data/v1/state.json' ':(exclude)data/v1/index/**')"
+          if [ -n "$rewritten" ]; then
+            echo "::error::records are immutable, but this change modifies or deletes:"
+            echo "$rewritten"
+            exit 1
+          fi
+
+          # New keys or schemas can change the verdict on old files: check everything.
+          if [ -n "$(git diff --name-only "$BEFORE" HEAD -- keys/ schemas/)" ]; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git diff --name-only --diff-filter=AM "$BEFORE" HEAD -- data/ > "$RUNNER_TEMP/changed.txt"
+          echo "mode=changed" >> "$GITHUB_OUTPUT"
+          echo "$(wc -l < "$RUNNER_TEMP/changed.txt") data file(s) added or updated"
+
+      - name: Schemas and verifier on the new files
+        if: steps.scope.outputs.mode == 'changed'
+        run: |
+          set -euo pipefail
+          mapfile -t files < "$RUNNER_TEMP/changed.txt"
+          if [ ${#files[@]} -eq 0 ]; then echo "no data files changed"; exit 0; fi
+          tools/ci/validate-json.sh "${files[@]}"
+          witness=() timestamps=() findings=()
+          for f in "${files[@]}"; do
+            case "$f" in
+              data/v1/*/witness/*.json) witness+=("$f") ;;
+              data/v1/timestamps/*.json) timestamps+=("$f") ;;
+              data/v1/*/findings/*.json) findings+=("$f") ;;
+            esac
+          done
+          if [ ${#witness[@]} -gt 0 ]; then go run ./tools/verify witness -q "${witness[@]}"; fi
+          if [ ${#timestamps[@]} -gt 0 ]; then go run ./tools/verify timestamp -openssl -q "${timestamps[@]}"; fi
+          if [ ${#findings[@]} -gt 0 ]; then go run ./tools/verify finding -q "${findings[@]}"; fi
+
+      - name: The whole record
+        if: steps.scope.outputs.mode == 'full'
+        run: |
+          tools/ci/validate-json.sh
+          go run ./tools/verify all -openssl -q
