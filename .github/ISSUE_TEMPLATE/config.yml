@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/diagnos-tech/audit/security/advisories/new
+    about: >-
+      If the verifier accepts something it should reject, or the page can be made to show something that is not in
+      the data, do not open a public issue. See SECURITY.md.
+  - name: How to verify the record
+    url: https://github.com/diagnos-tech/audit/blob/develop/VERIFY.md
+    about: Step-by-step checks with Go, OpenSSL, jq and sha256sum.
