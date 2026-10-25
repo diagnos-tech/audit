@@ -1,0 +1,11 @@
+# Binaries built from tools/ (go build ./tools/verify)
+/verify
+/genexamples
+/tools/verify/verify
+/tools/genexamples/genexamples
+
+# Editors and systems
+.DS_Store
+*.swp
+.idea/
+.vscode/

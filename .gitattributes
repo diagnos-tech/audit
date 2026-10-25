@@ -1,0 +1,10 @@
+# Records are pinned by the SHA-256 of their exact bytes, so no checkout may rewrite line endings.
+* text=auto eol=lf
+*.tsr binary
+*.der binary
+
+# Written by the witness (or the example generator): collapse their diffs and keep them out of the
+# language statistics.
+data/** linguist-generated=true
+examples/data/** linguist-generated=true
+examples/keys/** linguist-generated=true
