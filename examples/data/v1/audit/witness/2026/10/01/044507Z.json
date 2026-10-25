@@ -1,0 +1,35 @@
+{
+  "schema": "witness/v1",
+  "log": "audit",
+  "origin": "transparency.example/audit/v1",
+  "url": "https://transparency.example/audit/v1/",
+  "witnessedAt": "2026-10-01T04:45:07Z",
+  "checkpoint": {
+    "size": 187557,
+    "root": "mUIho1ctp3gW9in1xk1pwyiA40CZqnC14e8K+UIfw2A=",
+    "note": "transparency.example/audit/v1\n187557\nmUIho1ctp3gW9in1xk1pwyiA40CZqnC14e8K+UIfw2A=\n\n— transparency.example/audit/v1 Egcjc9x2B1vHcy0q6/3xhbEPapthMc46b3ByIcnIhQx0tYpQaODFQCY7jFggEvaSg6e8bd5iKBxLZDouWQf2Y6Z+KQ8=\n— witness.example/auditor/v1 tOcnDAAAAABqveVTigx6kpqsfxr2Kbkmc5RNbUriW4vKQYfG+gNEQcv+4ylPGpZcOGJuB8pMOR562ajz5Es/D+fuq8ZAcoDqEjqLDg==\n"
+  },
+  "cosignature": {
+    "name": "witness.example/auditor/v1",
+    "keyHash": "b4e7270c"
+  },
+  "previous": {
+    "size": 187555,
+    "root": "JRNoyh0cv23pk/LIachvXAdnbso5Ms/mDBbbb1/nt2Y=",
+    "record": "data/v1/audit/witness/2026/10/01/042006Z.json"
+  },
+  "consistency": [
+    "Fi4RsYZ2x4Hwx60mW7Bv3oAL3KJ670EhuvxXooskThg=",
+    "bV4RQJ7RcyF8T0XfRZFREGpY43gzKvnoZg+AJpx/5fo=",
+    "XHodj/7eHtibnU8VdZout74vCD80FJ/JmA4wWOPKCOQ=",
+    "3Kv43Ppfle3em37mJBEmbV4ZIl/xXjqJYMw9AgU+5DQ=",
+    "+dQMA0jPTKqwwApaflRMitjt20g8Cbbz86M1KFIqCbQ=",
+    "huAzVchsHp+yCcw2eLnKCWoFbywA803F6JCSKi/XBd8=",
+    "Rg3af9m+UWL3ooLpreRMD/GiVMcBX/BCu4COy/+9dx4=",
+    "BjvvnQ5Z/nBc0uk/mYmRSUAH5fI5bYidid+jTCoLpy8=",
+    "hyCFdCcdrQHznPS0iE7ZnuZHIqnauqtZFGV1dv4YBc4=",
+    "uSG/bYDZeZeeLf6FDNSPvOaSotQVDPTXqmBPGlOaZ6Y=",
+    "Q0jb5bMR+OS2DxDo4UGx73NrS5Lcwqk9NVg/fc6xSO0=",
+    "4xlruznZ9Ztn+wlBtQYnr8bZ9cN31mLtdQggiTLxF4g="
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "timestamp/v1",
+  "hour": "2026-10-01T03:00:00Z",
+  "subject": {
+    "hour": "2026-10-01T03:00:00Z",
+    "logs": {
+      "audit": {
+        "origin": "transparency.example/audit/v1",
+        "size": 187538,
+        "root": "l0Rj3LUj4n8h69OAOtHBQmKo2ttgekH6CLaVQyx6f1c=",
+        "record": "data/v1/audit/witness/2026/10/01/024007Z.json",
+        "sha256": "64580c8d34e48d7b48ca917cdd303b48d8a4742e7a8539e841c978e7ce9af7c4"
+      },
+      "signs": {
+        "origin": "transparency.example/signs/v1",
+        "size": 9207,
+        "root": "Z362XP6656fdOvcynUGOcF7st8yxzZhHt9iEzc9knpU=",
+        "record": "data/v1/signs/witness/2026/10/01/010004Z.json",
+        "sha256": "8a13b23c9f5771568fc77df4ca08fe529a3ca77eabae8ff6803dccab8ef669a9"
+      }
+    },
+    "prev": {
+      "record": "data/v1/timestamps/2026/10/01/02Z.json",
+      "sha256": "4b97365dc8429860f6ab1b715a7615b050b9ed8b122f72dd9f5960c1f80e36f0"
+    }
+  },
+  "imprint": "dc1975a746dd460ca1a4f425b7e68c8d68c8631d06f7d01facb6c8f8ad993fb1",
+  "token": null,
+  "attempts": [
+    {
+      "provider": "example-tsa",
+      "error": "HTTP 503 Service Unavailable"
+    },
+    {
+      "provider": "example-tsa-backup",
+      "error": "timeout after 10s"
+    }
+  ]
+}
