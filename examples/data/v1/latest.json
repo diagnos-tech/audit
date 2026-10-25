@@ -1,0 +1,53 @@
+{
+  "schema": "latest/v1",
+  "updatedAt": "2026-10-01T14:20:08Z",
+  "witness": {
+    "name": "witness.example/auditor/v1",
+    "keyHash": "b4e7270c"
+  },
+  "logs": {
+    "audit": {
+      "origin": "transparency.example/audit/v1",
+      "url": "https://transparency.example/audit/v1/",
+      "checkedAt": "2026-10-01T14:20:08Z",
+      "size": 188948,
+      "root": "OLDajDFi/5PRy2eGhk/j6TKBonhqGIZh9HJOvkoxXAw=",
+      "witnessedAt": "2026-10-01T14:20:05Z",
+      "record": "data/v1/audit/witness/2026/10/01/142005Z.json",
+      "previousSize": 188911
+    },
+    "signs": {
+      "origin": "transparency.example/signs/v1",
+      "url": "https://transparency.example/signs/v1/",
+      "checkedAt": "2026-10-01T14:20:08Z",
+      "size": 9236,
+      "root": "QA/RSVow5+uWirpFoKDhV6ZrOMMCyY6gww0e0BEVWT0=",
+      "witnessedAt": "2026-10-01T13:20:05Z",
+      "record": "data/v1/signs/witness/2026/10/01/132005Z.json",
+      "previousSize": 9232
+    }
+  },
+  "timestamp": {
+    "hour": "2026-10-01T14:00:00Z",
+    "record": "data/v1/timestamps/2026/10/01/14Z.json",
+    "imprint": "53b5c07e4257f4de182267dbc3ce0cee8f73a57a00bb30db95b5dc5c827f246c",
+    "token": {
+      "provider": "example-tsa",
+      "genTime": "2026-10-01T14:00:08Z",
+      "file": "data/v1/timestamps/2026/10/01/14Z.tsr"
+    }
+  },
+  "findings": [
+    {
+      "log": "signs",
+      "kind": "equivocation",
+      "detectedAt": "2026-10-01T13:35:07Z",
+      "record": "data/v1/signs/findings/2026/10/01/133507Z.json",
+      "summary": "The log signed two different roots for size 9236."
+    }
+  ],
+  "months": [
+    "2026-10",
+    "2026-09"
+  ]
+}

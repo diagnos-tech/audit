@@ -1,0 +1,18 @@
+{
+  "schema": "witness/v1",
+  "log": "audit",
+  "origin": "transparency.example/audit/v1",
+  "url": "https://transparency.example/audit/v1/",
+  "witnessedAt": "2026-09-30T11:00:05Z",
+  "checkpoint": {
+    "size": 182350,
+    "root": "dCDqzIw0c9eBlp05NvL38rh4MRR9WIr+0Q7zP3PI5e0=",
+    "note": "transparency.example/audit/v1\n182350\ndCDqzIw0c9eBlp05NvL38rh4MRR9WIr+0Q7zP3PI5e0=\n\n— transparency.example/audit/v1 Egcjc3qOGksLfvlHojPw6RdW0fQ8XA8n6GPVnyFAmgojXl+sk3zwiFXTyVyaeqSnbLg1llcDYA1eTNNoVIB8gVUAFQg=\n— witness.example/auditor/v1 tOcnDAAAAABqvOu1HNDUQzpXPdYuWfBMFPll/fwb7jHCJm5m8GLjl1K0U3DbOTH4mdc34qq+ZpSznkrlN7dhZ8EB30+JlzaOi6BrBg==\n"
+  },
+  "cosignature": {
+    "name": "witness.example/auditor/v1",
+    "keyHash": "b4e7270c"
+  },
+  "previous": null,
+  "consistency": []
+}

@@ -1,0 +1,46 @@
+{
+  "schema": "timestamp/v1",
+  "hour": "2026-09-30T23:00:00Z",
+  "subject": {
+    "hour": "2026-09-30T23:00:00Z",
+    "logs": {
+      "audit": {
+        "origin": "transparency.example/audit/v1",
+        "size": 187501,
+        "root": "AoBEatybCF+eJDbY7n7CRwFB/lrnPvKQmgXqiBHuLbI=",
+        "record": "data/v1/audit/witness/2026/09/30/225507Z.json",
+        "sha256": "805657f9a25ba341ed9cd73e72a3499eed1fa011f19a444486811df9bb80caa5"
+      },
+      "signs": {
+        "origin": "transparency.example/signs/v1",
+        "size": 9206,
+        "root": "TtziONu9KNJ5B2RWSMtxjRPV44rCszJVuEQKErVTCmg=",
+        "record": "data/v1/signs/witness/2026/09/30/225507Z.json",
+        "sha256": "75ee42868afef080d33a586a0078370dc6872443488c15667d6fe273df4c7ad1"
+      }
+    },
+    "prev": {
+      "record": "data/v1/timestamps/2026/09/30/22Z.json",
+      "sha256": "b13e0182b3b246f35c9d9d31c5d04db3ac06e16649f08a38fd55ddf9d96c5683"
+    }
+  },
+  "imprint": "19d873eceb44269d69a9c3f32c0502cd1caa6f9771ef364047804c0de7d93d25",
+  "token": {
+    "provider": "example-tsa",
+    "url": "https://tsa.example/tsr",
+    "file": "data/v1/timestamps/2026/09/30/23Z.tsr",
+    "sha256": "723803cb63cd4a3223cc1250399bcc966762537f12f16c8eb40923042389887b",
+    "genTime": "2026-09-30T23:00:06Z",
+    "serial": "100c",
+    "policy": "1.3.6.1.4.1.32473.1.1",
+    "tsa": "CN=Example TSA (example only - not a real TSA),O=diagnos audit examples",
+    "checks": [
+      "status",
+      "imprint",
+      "nonce",
+      "time",
+      "signature"
+    ]
+  },
+  "attempts": []
+}
