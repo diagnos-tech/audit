@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-changes-recent.schema.json",
+  "title": "CIA recent changes",
+  "description": "The latest 30 change events, newest first: the head of changes.json, small enough for the page to load with its first screen. Stored at data/v1/cia/changes-recent.json. A view: it holds exactly the first 30 events (or all of them when there are fewer) of the list the verifier derives for cia-changes.schema.json, in the same order and with the same items.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "events"],
+  "properties": {
+    "schema": { "const": "cia-changes-recent/v1" },
+    "events": {
+      "description": "Newest first by at, ties by id; at most 30.",
+      "type": "array",
+      "maxItems": 30,
+      "items": { "$ref": "cia-changes.schema.json#/$defs/event" }
+    }
+  }
+}

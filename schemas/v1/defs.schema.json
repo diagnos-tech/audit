@@ -134,6 +134,159 @@
         "record": { "$ref": "#/$defs/findingPath" },
         "summary": { "type": "string", "minLength": 1, "maxLength": 280 }
       }
+    },
+    "serviceId": {
+      "description": "Short, stable name of an audited service, as used in paths and in /healthz (frontend, vault, sign, status).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,30}$"
+    },
+    "serviceUrl": {
+      "description": "Base URL of an audited service: https, a host, and a single trailing slash.",
+      "type": "string",
+      "pattern": "^https://[a-z0-9.-]+/$"
+    },
+    "dimension": {
+      "description": "One of the three audited properties.",
+      "enum": ["availability", "integrity", "confidentiality"]
+    },
+    "level": {
+      "description": "ok: the check passed. warn: degraded, or the auditor could not confirm. fail: the check failed or there is evidence of a problem. none: not measured.",
+      "enum": ["ok", "warn", "fail", "none"]
+    },
+    "day": {
+      "description": "A UTC calendar day.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+    },
+    "slot": {
+      "description": "The start of a five-minute slot: a UTC instant whose minutes are a multiple of five and whose seconds are zero.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][05]:00Z$"
+    },
+    "dayLetters": {
+      "description": "One letter per five-minute slot of a UTC day (288): o ok, w warn, f fail, - none or not measured.",
+      "type": "string",
+      "pattern": "^[owf-]{288}$"
+    },
+    "dayRuns": {
+      "description": "One digit per five-minute slot of a UTC day (288): 1 if the auditor recorded a run in that slot, 0 if not.",
+      "type": "string",
+      "pattern": "^[01]{288}$"
+    },
+    "windowLetters": {
+      "description": "One letter per UTC day of a 90-day window, oldest first: o ok, w warn, f fail, - none or not measured.",
+      "type": "string",
+      "pattern": "^[owf-]{90}$"
+    },
+    "gitCommit": {
+      "description": "A full Git commit hash (SHA-1), lowercase hex.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "gitBlob": {
+      "description": "A Git blob hash (SHA-1) as GitHub reports it, lowercase hex.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "version": {
+      "description": "A release version as the service reports it (semantic version, optionally with build metadata).",
+      "type": "string",
+      "pattern": "^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$"
+    },
+    "incidentId": {
+      "description": "Identifier of a declared incident: the declaration date and a slug (which must not start with \"auto-\", that is for the incidents the auditor opens itself). It is also the file name, incidents/<id>.md. The incidents of both kinds are told apart by their source.",
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])-[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "autoIncidentId": {
+      "description": "Identifier of an incident the auditor opened on its own: the UTC day of the first slot of the problem, \"auto\", the service, the category (a availability, i integrity) and the time of that slot (HHMM), e.g. 2026-10-01-auto-vault-a-0310. It is also the prefix of the file names of its event facts. A declared incident may not use a slug that starts with \"auto-\".",
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])-auto-[a-z][a-z0-9-]{0,30}-[ai]-([01][0-9]|2[0-3])[0-5][0-9]$"
+    },
+    "incidentCategory": {
+      "description": "What an incident is about: C confidentiality, I integrity, A availability. An incident colours the dimensions of its categories on the services it affects.",
+      "enum": ["C", "I", "A"]
+    },
+    "incidentCategories": {
+      "description": "A non-empty set of incident categories, always written in the order C, I, A.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/incidentCategory" }
+    },
+    "incidentSeverity": {
+      "description": "low and medium colour the affected dimension yellow; high and critical, red.",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "ciaIncidentEventPath": {
+      "description": "Repository path of one event of an automatic incident: <incident id>-<seq>.json under the UTC day of the run that wrote it.",
+      "type": "string",
+      "pattern": "^data/v1/cia/incidents/events/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{4}-[0-9]{2}-[0-9]{2}-auto-[a-z][a-z0-9-]{0,30}-[ai]-[0-9]{4}-[1-9][0-9]{0,3}\\.json$"
+    },
+    "localizedText": {
+      "description": "The same plain text in English and Brazilian Portuguese.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en", "pt-BR"],
+      "properties": {
+        "en": { "type": "string", "minLength": 1 },
+        "pt-BR": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ciaRunPath": {
+      "description": "Repository path of a CIA run record; the file name is the slot (HHMM, UTC).",
+      "type": "string",
+      "pattern": "^data/v1/cia/runs/[0-9]{4}/[0-9]{2}/[0-9]{2}/([01][0-9]|2[0-3])[0-5][05]Z\\.json$"
+    },
+    "ciaIncidentsPath": {
+      "description": "Repository path of an incidents snapshot; the file name is the slot (HHMM, UTC) of the run that read it.",
+      "type": "string",
+      "pattern": "^data/v1/cia/incidents/[0-9]{4}/[0-9]{2}/[0-9]{2}/([01][0-9]|2[0-3])[0-5][05]Z\\.json$"
+    },
+    "releaseVerdictPath": {
+      "description": "Repository path of the auditor's verdict on one release of one service, under the release's manifest digest.",
+      "type": "string",
+      "pattern": "^data/v1/cia/releases/[a-z][a-z0-9-]{0,30}/[0-9a-f]{64}/verdict\\.json$"
+    },
+    "releaseFilePath": {
+      "description": "Repository path of a piece of release evidence archived by the auditor.",
+      "type": "string",
+      "pattern": "^data/v1/cia/releases/[a-z][a-z0-9-]{0,30}/[0-9a-f]{64}/(manifest\\.json|manifest\\.json\\.sig|provenance\\.sigstore\\.json)$"
+    },
+    "ciaRunLink": {
+      "description": "A CIA run record and the SHA-256 of its bytes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record", "sha256"],
+      "properties": {
+        "record": { "$ref": "#/$defs/ciaRunPath" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "ciaIncidentsLink": {
+      "description": "An incidents snapshot and the SHA-256 of its bytes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record", "sha256"],
+      "properties": {
+        "record": { "$ref": "#/$defs/ciaIncidentsPath" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "checkCode": {
+      "description": "Machine-readable reason of a check result. The allowed values per check are listed in cia-run.schema.json.",
+      "type": "string",
+      "pattern": "^[a-z][a-z-]{1,30}$"
+    },
+    "shortText": {
+      "description": "A one-line human-readable explanation.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280
     }
   }
 }

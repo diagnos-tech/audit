@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/healthz.schema.json",
+  "title": "Service health and release",
+  "description": "What every audited diagnos service answers at GET /healthz: that it is up, which build it runs, and where the signed evidence for that build is. Static sites serve the same bytes at /healthz and /healthz.json. The response never depends on a database, a session or the caller.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "ok", "service", "environment", "version", "commit", "deployment", "build"],
+  "properties": {
+    "schema": { "const": "healthz/v1" },
+    "ok": { "const": true },
+    "service": { "$ref": "defs.schema.json#/$defs/serviceId" },
+    "environment": { "enum": ["production", "sandbox", "development"] },
+    "version": { "$ref": "defs.schema.json#/$defs/version" },
+    "commit": {
+      "description": "The source commit the build was made from; null only for development builds outside Git.",
+      "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/gitCommit" }]
+    },
+    "deployment": {
+      "description": "The hosting platform's id for this deployment (Workers version tag or id, Pages deployment, Actions run id), for operators. Not verified.",
+      "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z._:-]{0,99}$" }]
+    },
+    "build": {
+      "description": "The signed release this service runs, or null when it runs a build without published evidence.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["digest", "manifest", "signature", "provenance"],
+          "properties": {
+            "digest": { "$ref": "defs.schema.json#/$defs/sha256", "description": "SHA-256 of the exact bytes served at build.manifest." },
+            "manifest": { "const": "/.well-known/diagnos/manifest.json" },
+            "signature": { "const": "/.well-known/diagnos/manifest.json.sig" },
+            "provenance": { "const": "/.well-known/diagnos/provenance.sigstore.json" }
+          }
+        }
+      ]
+    }
+  }
+}

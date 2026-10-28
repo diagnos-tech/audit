@@ -42,6 +42,10 @@
       "required": ["hour", "logs", "prev"],
       "properties": {
         "hour": { "$ref": "defs.schema.json#/$defs/hour" },
+        "cia": {
+          "description": "The latest CIA run record at the time of the hour and the SHA-256 of its bytes. Absent in records written before CIA reporting began; when present it is covered by the imprint like every other field.",
+          "$ref": "defs.schema.json#/$defs/ciaRunLink"
+        },
         "logs": {
           "description": "For each log, the latest witness record at the time of the hour.",
           "type": "object",

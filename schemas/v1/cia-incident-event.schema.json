@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-incident-event.schema.json",
+  "title": "Automatic incident event",
+  "description": "One step in the life of an incident the auditor opened on its own, never written by people (declared incidents are Markdown files in incidents/). Stored at data/v1/cia/incidents/events/YYYY/MM/DD/<id>-<seq>.json, the UTC day of the run that wrote it. Immutable. Every event carries the whole state of the incident after it, so the current state of an incident is its event with the highest seq. Only availability (A) and integrity (I) incidents are opened automatically: a leak cannot be detected from outside, so confidentiality (C) incidents are always declared. An availability incident opens when a service's availability is fail for 3 consecutive slots (startedAt is the first of them) and resolves after 2 consecutive slots that are not fail (resolvedAt is the start of the first of them, so the incident covers exactly the failed slots). An integrity incident opens at once on the first slot where a service's integrity is fail (an invalid release, a served file that differs, a witness finding) and resolves when it is no longer fail; a finding never resolves. The sequence of one incident is: one opened (seq 1), any number of updated, at most one resolved, last.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "seq", "type", "at", "source", "categories", "services", "severity", "startedAt", "resolvedAt", "reasons", "run"],
+  "properties": {
+    "schema": { "const": "cia-incident-event/v1" },
+    "id": { "$ref": "defs.schema.json#/$defs/autoIncidentId" },
+    "seq": { "description": "1 for opened, then 2, 3, … without gaps.", "type": "integer", "minimum": 1, "maximum": 9999 },
+    "type": { "enum": ["opened", "updated", "resolved"] },
+    "at": { "description": "The slot of the run that wrote this event.", "$ref": "defs.schema.json#/$defs/slot" },
+    "source": { "const": "auditor" },
+    "categories": {
+      "description": "Exactly one: A for the availability of the service, I for its integrity (never C).",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "enum": ["I", "A"] }
+    },
+    "services": {
+      "description": "Exactly one service, the one named in the id.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "defs.schema.json#/$defs/serviceId" }
+    },
+    "severity": {
+      "description": "high (failed availability, invalid release) or critical (served bytes that differ, a witness finding) by the auditor's policy; the schema allows every severity so a policy change does not break old facts. low and medium colour yellow, high and critical red.",
+      "$ref": "defs.schema.json#/$defs/incidentSeverity"
+    },
+    "startedAt": { "description": "The start of the first slot of the problem, which can be earlier than at.", "$ref": "defs.schema.json#/$defs/slot" },
+    "resolvedAt": {
+      "description": "null until the resolved event, which carries the start of the first slot that was no longer failing.",
+      "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/slot" }]
+    },
+    "reasons": {
+      "description": "The check codes that made it an incident (for example timeout, signature-invalid, served-mismatch, finding), without repeats. They are the codes the run records carry.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "defs.schema.json#/$defs/checkCode" }
+    },
+    "run": { "description": "The run record of the slot at, which is the evidence for this event.", "$ref": "defs.schema.json#/$defs/ciaRunPath" }
+  }
+}

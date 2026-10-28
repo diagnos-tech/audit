@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-run.schema.json",
+  "title": "CIA run record",
+  "description": "What one auditor run measured in one five-minute slot: availability, integrity and confidentiality of every audited service. Stored at data/v1/cia/runs/YYYY/MM/DD/HHMMZ.json (the slot, UTC). Immutable. Each record links the previous one by the SHA-256 of its bytes, and the hourly timestamp pins the latest record of the hour. A dimension's level is the worst level of its checks (fail > warn > ok > none); the level of each check follows from its code (table in the CIA contract).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "slot", "startedAt", "finishedAt", "prev", "incidents", "services"],
+  "properties": {
+    "schema": { "const": "cia-run/v1" },
+    "slot": { "$ref": "defs.schema.json#/$defs/slot" },
+    "startedAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "finishedAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "prev": {
+      "description": "The previous run record, or null for the first one.",
+      "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/ciaRunLink" }]
+    },
+    "vantage": {
+      "description": "Where the probes of this run ran, as provider:region (scaleway:fr-par). Recorded so that a second vantage point can be told apart later. Optional.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*:[a-z0-9][a-z0-9-]*$"
+    },
+    "control": {
+      "description": "The control probe of this run: a request to a target outside diagnos, made together with the service probes. When it failed and every service probe failed too, the auditor's own network is at fault, not the services: the run is a vantage failure and every network check of it (healthz, checkpoint, release, log) is recorded with level none and code vantage, never fail. A run with a vantage failure is never an incident and a delay or gap in the record is never an outage. Optional.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "ok", "httpStatus", "latencyMs"],
+      "properties": {
+        "host": { "description": "The host of the control target, without path or query.", "type": "string", "pattern": "^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$" },
+        "ok": { "type": "boolean" },
+        "httpStatus": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 100, "maximum": 599 }] },
+        "latencyMs": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/milliseconds" }] }
+      }
+    },
+    "incidents": {
+      "description": "Where this run read the declared incidents from.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "commit", "readAt", "snapshot"],
+      "properties": {
+        "source": {
+          "description": "github: read from the repository in this run. cache: GitHub was unreachable; the auditor used its last good copy. none: no copy at all.",
+          "enum": ["github", "cache", "none"]
+        },
+        "commit": {
+          "description": "The commit of diagnos-tech/audit the incidents were read from.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/gitCommit" }]
+        },
+        "readAt": {
+          "description": "When that copy was read from GitHub.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }]
+        },
+        "snapshot": {
+          "description": "The incidents snapshot in force for this run (the latest one written, by this run or an earlier one).",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/ciaIncidentsLink" }]
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/serviceId" },
+      "additionalProperties": { "$ref": "#/$defs/service" }
+    }
+  },
+  "$defs": {
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "availability", "integrity", "confidentiality"],
+      "properties": {
+        "url": { "$ref": "defs.schema.json#/$defs/serviceUrl" },
+        "availability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level", "checks"],
+          "properties": {
+            "level": { "$ref": "defs.schema.json#/$defs/level" },
+            "checks": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "oneOf": [{ "$ref": "#/$defs/healthzCheck" }, { "$ref": "#/$defs/checkpointCheck" }] }
+            }
+          }
+        },
+        "integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level", "checks"],
+          "properties": {
+            "level": { "$ref": "defs.schema.json#/$defs/level" },
+            "checks": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "oneOf": [{ "$ref": "#/$defs/releaseCheck" }, { "$ref": "#/$defs/logCheck" }] }
+            }
+          }
+        },
+        "confidentiality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level", "checks"],
+          "properties": {
+            "level": { "$ref": "defs.schema.json#/$defs/level" },
+            "checks": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "items": { "$ref": "#/$defs/incidentsCheck" }
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/shortText" }]
+    },
+    "healthzCheck": {
+      "description": "GET <url>healthz from the auditor (Scaleway, fr-par), with one retry.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "attempts", "httpStatus", "latencyMs", "tlsNotAfter", "error"],
+      "properties": {
+        "id": { "const": "healthz" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": {
+          "enum": ["ok", "retried", "slow", "tls-expiring", "timeout", "connect-error", "tls-error", "http-status", "content-type", "invalid-body", "wrong-service", "wrong-environment", "vantage"]
+        },
+        "attempts": { "type": "integer", "minimum": 1, "maximum": 2 },
+        "httpStatus": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 100, "maximum": 599 }] },
+        "latencyMs": {
+          "description": "Time from sending the request to the end of the body, of the attempt that decided the result.",
+          "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0, "maximum": 600000 }]
+        },
+        "tlsNotAfter": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }] },
+        "timings": {
+          "description": "Where the time of the deciding attempt went, in whole milliseconds, from the HTTP client's own trace. dnsMs is name resolution, connectMs the TCP connection, tlsMs the TLS handshake and firstByteMs the wait from the request sent to the first byte of the response; a phase that did not happen (a reused or literal address, no TLS) or did not finish is null. totalMs is the whole attempt, from sending the request to the end of the body or to the failure; when latencyMs is not null it equals it. Optional: records written before it existed do not have it.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["dnsMs", "connectMs", "tlsMs", "firstByteMs", "totalMs"],
+              "properties": {
+                "dnsMs": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/milliseconds" }] },
+                "connectMs": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/milliseconds" }] },
+                "tlsMs": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/milliseconds" }] },
+                "firstByteMs": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/milliseconds" }] },
+                "totalMs": { "$ref": "#/$defs/milliseconds" }
+              }
+            }
+          ]
+        },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "milliseconds": { "type": "integer", "minimum": 0, "maximum": 600000 },
+    "checkpointCheck": {
+      "description": "Whether the auditor could read a transparency log's checkpoint in this run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "error"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^checkpoint:[a-z][a-z0-9-]{0,30}$" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": { "enum": ["ok", "unreachable", "vantage"] },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "releaseCheck": {
+      "description": "The release the service reports in /healthz, and the auditor's verdict on its signature, provenance and served files.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "version", "commit", "digest", "verdict", "firstSeen", "served", "error"],
+      "properties": {
+        "id": { "const": "release" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": {
+          "enum": ["verified", "pending", "unverified", "unsigned", "unmonitored", "digest-mismatch", "claim-mismatch", "signature-invalid", "provenance-invalid", "served-mismatch", "unreachable", "vantage"]
+        },
+        "version": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/version" }] },
+        "commit": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/gitCommit" }] },
+        "digest": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/sha256" }] },
+        "verdict": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/releaseVerdictPath" }] },
+        "firstSeen": {
+          "description": "The first run that saw this digest.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }]
+        },
+        "served": {
+          "description": "Served-file sampling for this digest so far: distinct manifest entries checked, entries with a served URL, mismatches found.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["checked", "total", "mismatches", "lastCheckedAt"],
+              "properties": {
+                "checked": { "type": "integer", "minimum": 0 },
+                "total": { "type": "integer", "minimum": 0 },
+                "mismatches": { "type": "integer", "minimum": 0 },
+                "lastCheckedAt": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }] }
+              }
+            }
+          ]
+        },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "logCheck": {
+      "description": "What the witness did with a transparency log in this run (only on the service the logs belong to).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "status", "size", "record", "finding", "error"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^log:[a-z][a-z0-9-]{0,30}$" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": { "enum": ["ok", "finding", "halted", "log-error", "unreachable", "vantage"] },
+        "status": { "enum": ["unchanged", "empty", "witnessed", "finding", "halted", "error"] },
+        "size": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/treeSize" }] },
+        "record": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/witnessPath" }] },
+        "finding": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/findingPath" }] },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "incidentsCheck": {
+      "description": "Declared incidents affecting the service at the slot, as known to this run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "open", "error"],
+      "properties": {
+        "id": { "const": "incidents" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": { "enum": ["clear", "incident-low", "incident-high", "invalid", "unavailable"] },
+        "open": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "defs.schema.json#/$defs/incidentId" }
+        },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-changes.schema.json",
+  "title": "CIA changes",
+  "description": "The latest change events of the record, newest first, at most 500: a service entering a new level of availability or integrity, an incident declared, opened, updated, resolved or removed, a release verified, a witness finding, and the record itself being delayed, resuming, or missing a run because the auditor's own network failed (a delay of the record, never an outage of a service). Stored at data/v1/cia/changes.json. A view: every event is derived from the run records and the incident facts by fixed rules, which the verifier applies again and compares, so the list cannot hide or invent a change. The feeds (feeds/all.*, feeds/<service>.*, feeds/incidents.*) carry the same events, the last 100 of each.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "events"],
+  "properties": {
+    "schema": { "const": "cia-changes/v1" },
+    "events": {
+      "description": "Newest first by at, ties by id; at most 500.",
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/event" }
+    }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "at", "since", "kind", "services", "categories", "dimension", "from", "to", "summary", "links"],
+      "properties": {
+        "id": {
+          "description": "Stable and unique. A level, release, finding or record event: <at as YYYYMMDDHHMM>-<service or record>-<dimension or the kind>-<kind>, for example 202610010320-vault-availability-level or 202610010500-record-delayed. An event of an automatic incident: the file stem of its event fact (<incident id>-<seq>). An event of a declared incident: <incident id>-<snapshot slot as YYYYMMDDHHMM>.",
+          "type": "string",
+          "pattern": "^[0-9a-z][0-9a-z-]{5,150}$"
+        },
+        "at": { "description": "The slot of the run that wrote or detected the event. For incident events written by the auditor, at of the event fact; for declared incidents, the slot of the snapshot that changed.", "$ref": "defs.schema.json#/$defs/slot" },
+        "since": { "description": "The slot the new state began: the first slot of the debounce window for a level change; at for every other kind.", "$ref": "defs.schema.json#/$defs/slot" },
+        "kind": {
+          "enum": ["level-changed", "release-verified", "finding", "incident-opened", "incident-updated", "incident-resolved", "incident-removed", "record-delayed", "record-resumed", "vantage"]
+        },
+        "services": {
+          "description": "The services the event is about; empty for record-delayed, record-resumed and vantage.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "defs.schema.json#/$defs/serviceId" }
+        },
+        "categories": {
+          "description": "C, I, A, in that order; empty for record-delayed, record-resumed and vantage.",
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "$ref": "defs.schema.json#/$defs/incidentCategory" }
+        },
+        "dimension": {
+          "description": "The dimension of a level change; integrity for a release or a finding; null for every other kind.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/dimension" }]
+        },
+        "from": { "description": "The level before a level change; null for every other kind.", "oneOf": [{ "type": "null" }, { "enum": ["ok", "warn", "fail"] }] },
+        "to": { "description": "The level after a level change; null for every other kind.", "oneOf": [{ "type": "null" }, { "enum": ["ok", "warn", "fail"] }] },
+        "summary": {
+          "description": "One line, in both languages, from the fixed templates of the contract (so the verifier can recompute it).",
+          "allOf": [
+            { "$ref": "defs.schema.json#/$defs/localizedText" },
+            { "properties": { "en": { "maxLength": 240 }, "pt-BR": { "maxLength": 240 } } }
+          ]
+        },
+        "links": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["record", "incident", "finding", "release"],
+          "properties": {
+            "record": { "description": "The run record of the slot at, or null for a declared incident event and for record-delayed (its slot has no record).", "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/ciaRunPath" }] },
+            "incident": { "description": "The incident an incident event is about.", "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/incidentId" }] },
+            "finding": { "description": "The finding of a finding event.", "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/findingPath" }] },
+            "release": { "description": "The verdict of a release event.", "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/releaseVerdictPath" }] }
+          }
+        }
+      }
+    }
+  }
+}

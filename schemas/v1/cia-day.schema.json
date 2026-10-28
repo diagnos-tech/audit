@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-day.schema.json",
+  "title": "CIA day",
+  "description": "One UTC day of CIA results in five-minute slots, for the page's 24-hour view. Stored at data/v1/cia/days/YYYY/MM/DD.json. A view: it is derived from the run records of the day and the incidents (the latest declared snapshot and the automatic incidents' events), and is rewritten when either changes (the colours follow the incidents, so they are recomputed when an incident is declared, edited, opened or resolved after the fact). Slot i covers [00:00 + 5i min, 00:05 + 5i min) UTC.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "day", "updatedAt", "runs", "services", "spans"],
+  "properties": {
+    "schema": { "const": "cia-day/v1" },
+    "day": { "$ref": "defs.schema.json#/$defs/day" },
+    "updatedAt": {
+      "$ref": "defs.schema.json#/$defs/time",
+      "description": "finishedAt of the latest run whose sync rewrote this file. Not part of the derivation: verifiers ignore it."
+    },
+    "runs": { "$ref": "defs.schema.json#/$defs/dayRuns" },
+    "services": {
+      "type": "object",
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/serviceId" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["availability", "integrity", "confidentiality"],
+        "properties": {
+          "availability": { "$ref": "defs.schema.json#/$defs/dayLetters" },
+          "integrity": { "$ref": "defs.schema.json#/$defs/dayLetters" },
+          "confidentiality": { "$ref": "defs.schema.json#/$defs/dayLetters" },
+          "latency": {
+            "description": "How long the service's /healthz took over the day: the 50th and 95th percentile (nearest rank: the value at position ceil(p * n / 100) of the n sorted values) of latencyMs of its healthz check in the day's run records, over the runs where that is not null; samples is n. Both percentiles are null when samples is 0. Optional: day files written before it existed do not have it.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["p50Ms", "p95Ms", "samples"],
+            "properties": {
+              "p50Ms": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0, "maximum": 600000 }] },
+              "p95Ms": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0, "maximum": 600000 }] },
+              "samples": { "type": "integer", "minimum": 0, "maximum": 288 },
+              "slotsMs": {
+                "description": "The latency of each slot of the day, for a sparkline: the latencyMs of the service's healthz check in the run record of slot i, or null when the slot has no run record or the check has no latency. Exactly 288 entries. Optional.",
+                "type": "array",
+                "minItems": 288,
+                "maxItems": 288,
+                "items": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0, "maximum": 600000 }] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "spans": {
+      "description": "Every maximal run of consecutive measured slots of one service and dimension that share the same non-ok level, code and incidents, ordered by service, dimension (availability, integrity, confidentiality) and first slot.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["service", "dimension", "from", "to", "level", "code", "incidents"],
+        "properties": {
+          "service": { "$ref": "defs.schema.json#/$defs/serviceId" },
+          "dimension": { "$ref": "defs.schema.json#/$defs/dimension" },
+          "from": { "type": "integer", "minimum": 0, "maximum": 287 },
+          "to": { "type": "integer", "minimum": 0, "maximum": 287 },
+          "level": { "enum": ["warn", "fail", "none"] },
+          "code": { "$ref": "defs.schema.json#/$defs/checkCode" },
+          "incidents": {
+            "description": "The published incidents (declared or automatic) that affect the service in these slots and have the dimension's category (C confidentiality, I integrity, A availability), sorted by id. Empty when none does.",
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "defs.schema.json#/$defs/incidentId" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-incidents.schema.json",
+  "title": "Declared incidents snapshot",
+  "description": "Every published declared incident (publish: true) as the auditor read it from incidents/*.md of this repository: what people wrote, by pull request. Written as an immutable snapshot at data/v1/cia/incidents/YYYY/MM/DD/HHMMZ.json whenever the published set changes. The incidents the auditor opens on its own are not here (see cia-incident-event.schema.json), and the list the page shows merges both (cia-incident-list.schema.json). Unpublished files are validated but never listed. The blob hash pins the exact source of each incident, so later edits to a file stay visible.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "readAt", "source", "incidents"],
+  "properties": {
+    "schema": { "const": "cia-incidents/v1" },
+    "readAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "path"],
+      "properties": {
+        "repository": { "const": "diagnos-tech/audit" },
+        "commit": { "$ref": "defs.schema.json#/$defs/gitCommit" },
+        "path": { "const": "incidents" }
+      }
+    },
+    "incidents": {
+      "description": "Newest declaration first; ties by id.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/declaredIncident" }
+    }
+  },
+  "$defs": {
+    "declaredIncident": {
+      "description": "One declared incident. The same shape is used in the incident list, where it sits next to the automatic ones.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "file", "blob", "title", "summary", "services", "categories", "severity", "status", "declaredAt", "startedAt", "resolvedAt", "relates", "body"],
+      "properties": {
+        "id": { "$ref": "defs.schema.json#/$defs/incidentId" },
+        "source": { "const": "declared" },
+        "file": { "type": "string", "pattern": "^incidents/[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*\\.md$" },
+        "blob": { "$ref": "defs.schema.json#/$defs/gitBlob" },
+        "title": {
+          "allOf": [
+            { "$ref": "defs.schema.json#/$defs/localizedText" },
+            { "properties": { "en": { "maxLength": 120 }, "pt-BR": { "maxLength": 120 } } }
+          ]
+        },
+        "summary": {
+          "allOf": [
+            { "$ref": "defs.schema.json#/$defs/localizedText" },
+            { "properties": { "en": { "maxLength": 280 }, "pt-BR": { "maxLength": 280 } } }
+          ]
+        },
+        "services": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "defs.schema.json#/$defs/serviceId" }
+        },
+        "categories": {
+          "description": "The dimensions the incident colours on its services, in the order C, I, A.",
+          "$ref": "defs.schema.json#/$defs/incidentCategories"
+        },
+        "severity": { "$ref": "defs.schema.json#/$defs/incidentSeverity" },
+        "status": { "enum": ["investigating", "identified", "monitoring", "resolved"] },
+        "declaredAt": { "$ref": "defs.schema.json#/$defs/time" },
+        "startedAt": { "$ref": "defs.schema.json#/$defs/time" },
+        "resolvedAt": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }] },
+        "relates": {
+          "description": "The automatic incident this one adds a postmortem or explanation to, or null.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/autoIncidentId" }]
+        },
+        "body": {
+          "description": "The Markdown of the ## English and ## Português sections, without their headings.",
+          "allOf": [
+            { "$ref": "defs.schema.json#/$defs/localizedText" },
+            { "properties": { "en": { "maxLength": 20000 }, "pt-BR": { "maxLength": 20000 } } }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/sync.schema.json",
+  "title": "Mirror cursor",
+  "description": "How far this repository has caught up with the auditor's journal in object storage, its source of truth. Stored at data/v1/sync.json and rewritten in the same commit as the records it brings, so the commit and the cursor can never disagree. The journal is hash-chained; journal is the SHA-256 of the bytes of journal entry seq.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "seq", "journal", "syncedAt"],
+  "properties": {
+    "schema": { "const": "sync/v1" },
+    "seq": { "type": "integer", "minimum": 1, "maximum": 999999999999 },
+    "journal": { "$ref": "defs.schema.json#/$defs/sha256" },
+    "syncedAt": { "$ref": "defs.schema.json#/$defs/time" }
+  }
+}

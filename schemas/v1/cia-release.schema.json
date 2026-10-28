@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-release.schema.json",
+  "title": "Release verdict",
+  "description": "The auditor's verdict on one release of one service: whether the release manifest the service serves is signed, with an SLSA provenance attestation, by the build identity pinned in keys/signers.json, and agrees with what /healthz claims. Stored at data/v1/cia/releases/<service>/<digest>/verdict.json, next to the evidence it judged (manifest.json, manifest.json.sig, provenance.sigstore.json). Immutable: a release is judged once. Anyone can re-check a pass with cosign (VERIFY.md).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "service", "digest", "checkedAt", "result", "code", "reason", "claim", "manifest", "signer", "transparency", "files", "verifier"],
+  "properties": {
+    "schema": { "const": "cia-release/v1" },
+    "service": { "$ref": "defs.schema.json#/$defs/serviceId" },
+    "digest": { "$ref": "defs.schema.json#/$defs/sha256", "description": "SHA-256 of the bytes of manifest.json, as claimed by /healthz." },
+    "checkedAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "result": { "enum": ["pass", "fail"] },
+    "code": {
+      "description": "verified when result is pass; otherwise the first check that failed.",
+      "enum": ["verified", "digest-mismatch", "claim-mismatch", "signature-invalid", "provenance-invalid"]
+    },
+    "reason": { "$ref": "defs.schema.json#/$defs/shortText" },
+    "claim": {
+      "description": "What /healthz said when the release was first judged.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "version", "commit"],
+      "properties": {
+        "url": { "type": "string", "pattern": "^https://[a-z0-9.-]+/healthz$" },
+        "version": { "$ref": "defs.schema.json#/$defs/version" },
+        "commit": { "$ref": "defs.schema.json#/$defs/gitCommit" }
+      }
+    },
+    "manifest": {
+      "description": "Summary of manifest.json, or null when it could not be read as a release-manifest/v1.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "commit", "files", "bytes", "served"],
+          "properties": {
+            "version": { "$ref": "defs.schema.json#/$defs/version" },
+            "commit": { "$ref": "defs.schema.json#/$defs/gitCommit" },
+            "files": { "type": "integer", "minimum": 1 },
+            "bytes": { "type": "integer", "minimum": 0 },
+            "served": { "type": "integer", "minimum": 0, "description": "Entries with a served URL path." }
+          }
+        }
+      ]
+    },
+    "signer": {
+      "description": "The identity in the Fulcio certificate that signed both bundles, or null if no valid certificate was found.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["issuer", "san", "repository", "repositoryId", "ownerId", "ref", "commit", "trigger", "runner"],
+          "properties": {
+            "issuer": { "type": "string", "maxLength": 256 },
+            "san": { "type": "string", "maxLength": 512 },
+            "repository": { "type": "string", "maxLength": 256 },
+            "repositoryId": { "type": "string", "pattern": "^[0-9]{1,20}$" },
+            "ownerId": { "type": "string", "pattern": "^[0-9]{1,20}$" },
+            "ref": { "type": "string", "maxLength": 256 },
+            "commit": { "$ref": "defs.schema.json#/$defs/gitCommit" },
+            "trigger": { "type": "string", "maxLength": 64 },
+            "runner": { "type": "string", "maxLength": 64 }
+          }
+        }
+      ]
+    },
+    "transparency": {
+      "description": "Where each bundle was logged and when, as verified from the bundle's inclusion proof and timestamps.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signature", "provenance"],
+      "properties": {
+        "signature": { "$ref": "#/$defs/logEntry" },
+        "provenance": { "$ref": "#/$defs/logEntry" }
+      }
+    },
+    "files": {
+      "description": "The archived evidence. A file is null when the auditor could not fetch it (then result is fail), and in example data, which carries no real Sigstore bundle.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "signature", "provenance"],
+      "properties": {
+        "manifest": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/releaseFilePath" }] },
+        "signature": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/releaseFilePath" }] },
+        "provenance": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/releaseFilePath" }] }
+      }
+    },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "sigstore-go" },
+        "version": { "type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$" }
+      }
+    }
+  },
+  "$defs": {
+    "logEntry": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["log", "index", "time"],
+          "properties": {
+            "log": { "type": "string", "minLength": 1, "maxLength": 256, "description": "The transparency log's id or origin, as the bundle names it." },
+            "index": { "type": "integer", "minimum": 0 },
+            "time": { "$ref": "defs.schema.json#/$defs/time", "description": "The verified signing time (log integration time or RFC 3161 timestamp)." }
+          }
+        }
+      ]
+    }
+  }
+}

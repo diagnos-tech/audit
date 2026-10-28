@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-summary.schema.json",
+  "title": "CIA 90-day summary",
+  "description": "The last 90 UTC days of CIA results, one letter and one set of counts per day, for the page's 90-day view. Stored at data/v1/cia/summary.json. A view derived from the day files: counts[i] is the number of measured slots of day i at each level, and days[i] follows from counts[i] by the day rule of the CIA contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "updatedAt", "firstRun", "from", "to", "services"],
+  "properties": {
+    "schema": { "const": "cia-summary/v1" },
+    "updatedAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "firstRun": {
+      "description": "The slot of the first run ever recorded. Days before it have no data because the record had not started, not because the auditor missed them.",
+      "$ref": "defs.schema.json#/$defs/slot"
+    },
+    "from": { "$ref": "defs.schema.json#/$defs/day", "description": "First day of the window: to minus 89 days." },
+    "to": { "$ref": "defs.schema.json#/$defs/day", "description": "Last day of the window: the day of the latest run." },
+    "services": {
+      "type": "object",
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/serviceId" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["availability", "integrity", "confidentiality", "uptime"],
+        "properties": {
+          "availability": { "$ref": "#/$defs/series" },
+          "integrity": { "$ref": "#/$defs/series" },
+          "confidentiality": { "$ref": "#/$defs/series" },
+          "p95Ms": {
+            "description": "Per day, oldest first: the 95th percentile of the service's /healthz latency that day, copied from latency.p95Ms of that day's file; null when the day has no file or no samples. Optional.",
+            "type": "array",
+            "minItems": 90,
+            "maxItems": 90,
+            "items": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0, "maximum": 600000 }] }
+          },
+          "uptime": {
+            "description": "Availability over the window: slots at ok or warn, and slots at ok, warn or fail. The page shows up / measured.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["up", "measured"],
+            "properties": {
+              "up": { "type": "integer", "minimum": 0 },
+              "measured": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["days", "counts"],
+      "properties": {
+        "days": { "$ref": "defs.schema.json#/$defs/windowLetters" },
+        "counts": {
+          "description": "Per day, oldest first: [ok, warn, fail, none] measured slots.",
+          "type": "array",
+          "minItems": 90,
+          "maxItems": 90,
+          "items": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": { "type": "integer", "minimum": 0, "maximum": 288 }
+          }
+        }
+      }
+    }
+  }
+}

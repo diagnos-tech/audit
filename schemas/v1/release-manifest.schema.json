@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/release-manifest.schema.json",
+  "title": "Release manifest",
+  "description": "Every file of one release of one service, with its SHA-256 and size, and the URL path where it is served verbatim (null for files that are not served as-is, such as a Worker's script or the host's routing files). The manifest is the artifact that is signed: its SHA-256 is the release digest, the subject of the SLSA provenance and the build.digest of /healthz. Served at /.well-known/diagnos/manifest.json; it never lists /healthz, /healthz.json or anything under /.well-known/diagnos/.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "service", "version", "commit", "repository", "builtAt", "files"],
+  "properties": {
+    "schema": { "const": "release-manifest/v1" },
+    "service": { "$ref": "defs.schema.json#/$defs/serviceId" },
+    "version": { "$ref": "defs.schema.json#/$defs/version" },
+    "commit": { "$ref": "defs.schema.json#/$defs/gitCommit" },
+    "repository": { "type": "string", "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+    "builtAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "files": {
+      "description": "Sorted by path, bytewise.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "bytes", "served"],
+        "properties": {
+          "path": {
+            "description": "Path relative to the release's root directory, with / separators, no leading slash, no . or .. segments. Never healthz, healthz.json or anything under .well-known/diagnos/ (producers and verifiers enforce this; the pattern cannot).",
+            "type": "string",
+            "maxLength": 512,
+            "pattern": "^(\\.?[A-Za-z0-9_@~+-][A-Za-z0-9._@~+-]*)(/(\\.?[A-Za-z0-9_@~+-][A-Za-z0-9._@~+-]*))*$"
+          },
+          "sha256": { "$ref": "defs.schema.json#/$defs/sha256" },
+          "bytes": { "type": "integer", "minimum": 0 },
+          "served": {
+            "description": "URL path where this exact file is returned with status 200 (after same-host redirects), or null.",
+            "oneOf": [{ "type": "null" }, { "type": "string", "maxLength": 513, "pattern": "^/[^\\s?#]*$" }]
+          }
+        }
+      }
+    }
+  }
+}

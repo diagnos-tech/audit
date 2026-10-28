@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-incident-list.schema.json",
+  "title": "Incident list",
+  "description": "Every incident the status page shows, in one file: the published declared incidents (from the declared incidents snapshot in force) and the automatic ones (folded from their event facts, the current state of each), told apart by source. Stored at data/v1/cia/incidents.json. A view: the verifier recomputes it from the facts. Newest start first (startedAt), ties by id. The feeds feeds/incidents.atom and feeds/incidents.json are written from the same list.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "declared", "incidents"],
+  "properties": {
+    "schema": { "const": "cia-incident-list/v1" },
+    "declared": {
+      "description": "Where the declared incidents come from: the snapshot in force, or null while none has been written yet.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["snapshot", "commit", "readAt"],
+          "properties": {
+            "snapshot": { "$ref": "defs.schema.json#/$defs/ciaIncidentsPath" },
+            "commit": { "$ref": "defs.schema.json#/$defs/gitCommit" },
+            "readAt": { "$ref": "defs.schema.json#/$defs/time" }
+          }
+        }
+      ]
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "cia-incidents.schema.json#/$defs/declaredIncident" },
+          { "$ref": "#/$defs/automaticIncident" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "automaticIncident": {
+      "description": "The current state of an automatic incident: its latest event, with the number of events and the declared incidents that relate to it. It has no title: the page words it from the reasons.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "categories", "services", "severity", "status", "openedAt", "startedAt", "resolvedAt", "updatedAt", "reasons", "events", "lastEvent", "postmortems"],
+      "properties": {
+        "id": { "$ref": "defs.schema.json#/$defs/autoIncidentId" },
+        "source": { "const": "auditor" },
+        "categories": { "$ref": "defs.schema.json#/$defs/incidentCategories" },
+        "services": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "defs.schema.json#/$defs/serviceId" }
+        },
+        "severity": { "$ref": "defs.schema.json#/$defs/incidentSeverity" },
+        "status": { "description": "open until the resolved event.", "enum": ["open", "resolved"] },
+        "openedAt": { "description": "at of the opened event.", "$ref": "defs.schema.json#/$defs/slot" },
+        "startedAt": { "$ref": "defs.schema.json#/$defs/slot" },
+        "resolvedAt": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/slot" }] },
+        "updatedAt": { "description": "at of the latest event.", "$ref": "defs.schema.json#/$defs/slot" },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "defs.schema.json#/$defs/checkCode" }
+        },
+        "events": { "description": "How many events the incident has.", "type": "integer", "minimum": 1 },
+        "lastEvent": { "$ref": "defs.schema.json#/$defs/ciaIncidentEventPath" },
+        "postmortems": {
+          "description": "The ids of the declared incidents whose relates names this one, sorted.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "defs.schema.json#/$defs/incidentId" }
+        }
+      }
+    }
+  }
+}

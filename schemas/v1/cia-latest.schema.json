@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-latest.schema.json",
+  "title": "CIA latest",
+  "description": "The current state of every audited service, so one small request paints the page's headline. Stored at data/v1/cia/latest.json and rewritten by every sync. A view derived from the latest run record and the runs before it (for since).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "updatedAt", "slot", "record", "firstRun", "headline", "services", "incidents"],
+  "properties": {
+    "schema": { "const": "cia-latest/v1" },
+    "updatedAt": {
+      "$ref": "defs.schema.json#/$defs/time",
+      "description": "finishedAt of the latest run. The auditor runs every five minutes, so a value much older than that means it stopped reporting (or the publication lags)."
+    },
+    "slot": { "$ref": "defs.schema.json#/$defs/slot" },
+    "record": { "$ref": "defs.schema.json#/$defs/ciaRunPath" },
+    "firstRun": { "$ref": "defs.schema.json#/$defs/slot" },
+    "headline": {
+      "description": "Per dimension, the worst level over the services of the latest run (none only if every service is none).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "integrity", "confidentiality"],
+      "properties": {
+        "availability": { "$ref": "defs.schema.json#/$defs/level" },
+        "integrity": { "$ref": "defs.schema.json#/$defs/level" },
+        "confidentiality": { "$ref": "defs.schema.json#/$defs/level" }
+      }
+    },
+    "services": {
+      "type": "object",
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/serviceId" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "availability", "integrity", "confidentiality"],
+        "properties": {
+          "url": { "$ref": "defs.schema.json#/$defs/serviceUrl" },
+          "availability": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["level", "code", "since", "latencyMs", "incidents"],
+            "properties": {
+              "level": { "$ref": "defs.schema.json#/$defs/level" },
+              "code": { "$ref": "defs.schema.json#/$defs/checkCode" },
+              "since": { "$ref": "#/$defs/since" },
+              "latencyMs": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0 }] },
+              "incidents": { "$ref": "#/$defs/openIncidents" }
+            }
+          },
+          "integrity": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["level", "code", "since", "version", "commit", "digest", "verdict", "incidents"],
+            "properties": {
+              "level": { "$ref": "defs.schema.json#/$defs/level" },
+              "code": { "$ref": "defs.schema.json#/$defs/checkCode" },
+              "since": { "$ref": "#/$defs/since" },
+              "version": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/version" }] },
+              "commit": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/gitCommit" }] },
+              "digest": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/sha256" }] },
+              "verdict": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/releaseVerdictPath" }] },
+              "incidents": { "$ref": "#/$defs/openIncidents" }
+            }
+          },
+          "confidentiality": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["level", "code", "since", "incidents"],
+            "properties": {
+              "level": { "$ref": "defs.schema.json#/$defs/level" },
+              "code": { "$ref": "defs.schema.json#/$defs/checkCode" },
+              "since": { "$ref": "#/$defs/since" },
+              "incidents": { "$ref": "#/$defs/openIncidents" }
+            }
+          }
+        }
+      }
+    },
+    "incidents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["open", "snapshot"],
+      "properties": {
+        "open": {
+          "description": "Published incidents, declared and automatic, not resolved at the latest slot, newest start first (ties by id).",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "defs.schema.json#/$defs/incidentId" }
+        },
+        "snapshot": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/ciaIncidentsPath" }] }
+      }
+    }
+  },
+  "$defs": {
+    "openIncidents": {
+      "description": "The ids of the incidents not resolved at the latest slot that colour this dimension of this service: published incidents (declared or automatic) that affect the service and have the dimension's category (C confidentiality, I integrity, A availability). Newest start first, ties by id.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "defs.schema.json#/$defs/incidentId" }
+    },
+    "since": {
+      "description": "The slot where the current level began: the earliest run of the unbroken sequence of runs, ending at the latest one, whose dimension had this level for this service (the level the day files show, that is, measurements combined with incidents).",
+      "$ref": "defs.schema.json#/$defs/slot"
+    }
+  }
+}
