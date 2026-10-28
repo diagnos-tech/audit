@@ -1,14 +1,19 @@
-# Verifying the witness record
+# Verifying the audit record
 
-This is how to check, with your own tools, everything the record and the page claim. Nothing here
-asks you to trust diagnos, the witness, this repository's web page or its CI. Each step says what it
-proves and what it does not.
+This is how to check, with your own tools, everything the record and the status page claim. Nothing
+here asks you to trust diagnos, the auditor, the status page or this repository's CI. Each step says
+what it proves and what it does not.
+
+The record has two parts. The **witness** part (sections 3 to 6) checks diagnos' transparency logs
+and dates the record every hour. The **availability, integrity and confidentiality** part (sections
+10 to 12) checks the four services every five minutes: run records and the views built from them,
+the signed releases of the services, and the incidents diagnos declared.
 
 **Try every command on the example data first:** run them from `examples/` (or add `-root examples`
 to the `go run` commands). The examples are signed with published example keys and include an
 hour when one authority failed, an hour when every authority failed, and one finding, so you can see
-every outcome. Paths below are examples too;
-use the ones of the record you are checking (the page's *How to verify* panel fills them in).
+every outcome (the release check with `-cosign` needs a real release: the examples carry no real
+Sigstore bundle). Paths below are examples too; use the ones of the record you are checking.
 
 1. [Get the record](#1-get-the-record)
 2. [Decide which keys to trust](#2-decide-which-keys-to-trust)
@@ -19,6 +24,9 @@ use the ones of the record you are checking (the page's *How to verify* panel fi
 7. [Verify everything at once](#7-verify-everything-at-once)
 8. [When something does not verify](#8-when-something-does-not-verify)
 9. [Reference: the formats](#9-reference-the-formats)
+10. [Verify the run records and the views](#10-verify-the-run-records-and-the-views)
+11. [Verify a release with cosign](#11-verify-a-release-with-cosign)
+12. [Verify the declared incidents](#12-verify-the-declared-incidents)
 
 ## What you need
 
@@ -26,6 +34,7 @@ use the ones of the record you are checking (the page's *How to verify* panel fi
 | --- | --- | --- |
 | Go 1.24 or later | `tools/verify` | Its only dependency is `golang.org/x/mod`, fetched through the Go checksum database. |
 | OpenSSL 1.1.1 or later | RFC 3161 tokens, and Ed25519 by hand | `openssl version` |
+| [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) 3.x | releases (sections 10 and 11), `-cosign` | `cosign version`; only for the release checks |
 | `jq`, `sha256sum`, `base64`, `xxd`, `awk` | recomputing hashes by hand | coreutils / standard packages |
 
 ## 1. Get the record
@@ -38,25 +47,34 @@ cd audit
 A shallow clone is enough for any single record and its neighbours. `verify all` reads every file,
 so it needs a full checkout of `data/` (still a shallow history).
 
-Without cloning, every `go run` command below except `all` accepts the published site as its root:
+Without cloning, point `-root` at the files on GitHub. This works for a single record you name
+(`witness`, `timestamp`, `finding`, `consistency`, `release`):
 
 ```sh
 go run github.com/diagnos-tech/audit/tools/verify@latest witness \
-  -root https://diagnos-tech.github.io/audit/ data/v1/audit/witness/2026/10/25/140503Z.json
+  -root https://raw.githubusercontent.com/diagnos-tech/audit/develop/ \
+  data/v1/audit/witness/2026/10/25/140503Z.json
 ```
+
+Remote mode cannot list files, so `cia` and `all`, which read the whole record, need a clone. The
+same bytes are in the public Scaleway bucket
+(`https://imgexam-auditor-production.s3.fr-par.scw.cloud/`); an hourly check compares the two
+copies, and you can too.
 
 Records never change once committed, so a copy you keep stays checkable forever, and keeping one is
 itself a check: if a later copy of the repository disagrees with yours, the history was rewritten.
 
 ## 2. Decide which keys to trust
 
-Every check depends on three kinds of public key, all in [`keys/`](keys):
+Every witness check depends on three kinds of public key, all in [`keys/`](keys), and the release
+checks on a fourth, the pinned signers:
 
 | File | Key | Format |
 | --- | --- | --- |
 | `keys/logs/audit.vkey`, `keys/logs/signs.vkey` | each log's checkpoint key | signed-note verifier key, Ed25519 (`0x01`) |
 | `keys/witness/auditor.vkey` | the witness's cosignature key | `cosignature/v1` verifier key (`0x04`) |
 | `keys/tsa/<provider>.pem` | the CA chain of each time-stamping authority | PEM certificates; see [keys/tsa/README.md](keys/tsa/README.md) |
+| `keys/signers.json` | for each service, the CI identity whose signature a release must carry | `signers/v1`; used in sections 10 and 11, see [keys/README.md](keys/README.md) |
 
 A verifier key reads `<name>+<key hash>+<base64(algorithm byte ‖ 32-byte public key)>`. Its key hash
 is not decoration: it is the first four bytes of `SHA-256(name ‖ "\n" ‖ algorithm ‖ key)`, and you
@@ -298,16 +316,26 @@ From a local clone, `all` reads every file under `data/v1` and checks:
   subject names the newest record witnessed before that hour;
 - every finding, as in section 6;
 - that `state.json`, `latest.json` and every month index say exactly what the records say. The page
-  reads these summaries; this check is what keeps them honest.
+  reads these summaries; this check is what keeps them honest;
+- the run records and every view built from them, as in section 10, and the archived releases, as
+  in section 11. `verify all` takes two more flags: `-complete`, which demands an unbroken run
+  chain from the first run to the latest, and `-cosign`, which re-checks every archived release
+  with cosign.
 
-CI runs the same command every week, and on every push runs the per-record checks on the files the
-push added, rejects any change to an existing dated record, and validates every new file against
-[`schemas/v1`](schemas/v1).
+```sh
+go run ./tools/verify all -openssl -complete -cosign
+```
+
+CI runs that command every Monday. Every hour it also runs the per-record checks on the files the
+auditor committed since its last successful run, rejects any commit that modifies or deletes an
+existing record that is not a view, and validates every new file against
+[`schemas/v1`](schemas/v1). It does not run per commit: the auditor commits every five minutes.
 
 ## 8. When something does not verify
 
 The exit status is 0 when every check passed, 1 when any failed, 2 for bad usage. Warnings (an hour
-without a token) do not fail the run.
+without a token) do not fail the run. A gap in the run chain fails only with `-complete`
+(section 10).
 
 If a real record does not verify, that is what this repository exists to expose. Keep a copy of the
 files exactly as you got them (they are evidence), and report it: privately if you think it reveals
@@ -328,9 +356,281 @@ an issue. Please include the command, its full output, the commit you checked ou
 | tiles | `tile/<L>/<N>[.p/<W>]`, 256 hashes per full tile, N in groups of three digits (`x001/x234/067`) | [C2SP tlog-tiles](https://c2sp.org/tlog-tiles) |
 | hourly imprint | SHA-256 of the RFC 8785 (JCS) form of `subject` | RFC 8785 |
 | timestamp token | the `TimeStampResp` (status and token) in DER, as the authority returned it | RFC 3161 |
+| run record | `cia-run/v1`: levels, checks and codes per service; `prev` is the SHA-256 of the previous record's bytes | [`cia-run.schema.json`](schemas/v1/cia-run.schema.json) |
+| incident event, incident list, change events | `cia-incident-event/v1` (one change of an automatic incident), `cia-incident-list/v1` (declared and automatic incidents in one list), `cia-changes/v1` (the last 500 change events) | [`cia-incident-event`](schemas/v1/cia-incident-event.schema.json), [`cia-incident-list`](schemas/v1/cia-incident-list.schema.json), [`cia-changes`](schemas/v1/cia-changes.schema.json) |
+| day file | `cia-day/v1`: three strings of 288 letters (`o` `w` `f` `-`) per service, one per five-minute slot, and the spans that are not green | [`cia-day.schema.json`](schemas/v1/cia-day.schema.json) |
+| release manifest | `release-manifest/v1`: every file of a release with SHA-256, size and served path; its SHA-256 is the release digest | [`release-manifest.schema.json`](schemas/v1/release-manifest.schema.json) |
+| release signature, provenance | [Sigstore bundles](https://docs.sigstore.dev/about/bundle/): a message signature over `manifest.json`, and a DSSE in-toto statement with SLSA provenance v1 for the same digest | cosign |
+| declared incident | Markdown with a strict front matter (`categories` C, I, A; optional `relates`) and a bilingual body | [`incidents/README.md`](incidents/README.md) |
 | data files | JSON Schema 2020-12 | [`schemas/v1`](schemas/v1) |
 
 The leaves themselves are commitments, `SHA-256("diagnos.audit.v1\0" ‖ salt ‖ JCS(record))` (and
 `diagnos.signs.v1` for signatures), with a random 32-byte salt per item kept privately alongside the
 item. Whoever holds an item and its salt can prove its inclusion in the log; nobody can learn an item
 from the log.
+
+## 10. Verify the run records and the views
+
+Every five minutes the auditor writes one **run record**,
+`data/v1/cia/runs/YYYY/MM/DD/HHMMZ.json`, named after its five-minute slot (the run's start time
+rounded down to a multiple of five minutes). For each of the four services it holds, for each
+dimension, a `level` (`ok`, `warn`, `fail`, or `none` for *not measured*) and the `checks` it is
+the worst of. Each check has an `id` and a `code`, and the code fixes the level:
+
+| Check | ok | warn | fail | none |
+| --- | --- | --- | --- | --- |
+| `healthz` (availability) | ok, retried | slow, tls-expiring | timeout, connect-error, tls-error, http-status, content-type, invalid-body, wrong-service, wrong-environment | vantage |
+| `checkpoint:<log>` (availability) | ok | | unreachable | vantage |
+| `release` (integrity) | verified | pending, unverified, unsigned, unmonitored | digest-mismatch, claim-mismatch, signature-invalid, provenance-invalid, served-mismatch | unreachable, vantage |
+| `log:<log>` (integrity) | ok | log-error | finding, halted | unreachable, vantage |
+| `incidents` (confidentiality) | clear | incident-low, invalid | incident-high | unavailable |
+
+The dimension's level is the worst of its checks (`fail` over `warn` over `ok` over `none`). A run
+record's `prev` names the previous run record and the SHA-256 of its exact bytes, so the records
+form a chain like the hourly ones: a record cannot be removed or edited without breaking every
+later link.
+
+Probes also record how long they took: each `healthz` check has `timings` (DNS, connect, TLS, first
+byte and total, in milliseconds) and each run has the `vantage` it ran from (`scaleway:fr-par`).
+Day files add, per service, `latency {p50Ms, p95Ms, samples, slotsMs}`: the nearest-rank percentiles
+of the `healthz` latency of that day and the latency of each of its 288 slots, and the summary has
+`p95Ms` per day. These fields are additive and
+optional: records written before them do not have them.
+
+**Late data is never an outage.** A slot with no run record is `-` (not measured) in the day files,
+never `f`. Each run may carry `control`: a probe of a host outside diagnos, with `ok` true or false.
+When the control probe failed and the `healthz` probe of every service failed at the transport
+level (`timeout`, `connect-error`, `tls-error`), the auditor's own network failed, not the
+services: the run is a *vantage failure*. Every network check of every service (`healthz`,
+`checkpoint`, `release`, `log`) is then recorded with level `none` and code `vantage`, the run opens
+no incident and counts in no uptime. `verify cia` enforces it both ways: a run with any `vantage`
+check must have all four kinds of check of every service at `none`/`vantage`, and `control`
+present with `ok` false; and a run with `control.ok` false in which every service's `healthz` is a
+transport `fail` is an error, because it had to be recorded as a vantage failure.
+
+**Incidents are facts too.** Declared incidents arrive in the snapshots
+(`data/v1/cia/incidents/YYYY/MM/DD/HHMMZ.json`, section 12). The auditor opens, updates and resolves
+*automatic* incidents itself, each change as an immutable event,
+`data/v1/cia/incidents/events/YYYY/MM/DD/<id>-<seq>.json`: an availability incident after 3
+consecutive failed slots, an integrity incident for an invalid release, differing served files or
+a witness finding. `verify cia` checks that the events of an id are numbered 1, 2, 3 without gaps
+(`opened`, then `updated`, with `resolved` only last), that `categories`, `services` and
+`startedAt` never change, that they agree with the id and with the run records, that `relates` of
+a declared incident names an automatic incident that was opened, and the **coverage**: every
+maximal run of at least 3 consecutive recorded failing slots of a service's availability, and every
+failing integrity slot, lies inside an incident of that service. A failure the auditor did not turn
+into an incident is therefore detectable. `data/v1/cia/incidents.json` lists both kinds: the
+declared items (`source: "declared"`) and one item per automatic incident built from its latest
+event (`source: "auditor"`), newest `startedAt` first, ties by id; it is recomputed and compared
+byte for byte.
+
+**How an incident colours the record.** `low` and `medium` are `warn`, `high` and `critical` are
+`fail`; category `C` colours confidentiality, `I` integrity, `A` availability. A published incident
+affects dimension *d* of service *s* in a slot when *s* is among its services, the category of *d*
+is among its categories, it started before the slot ended and it was not resolved before the slot
+began; the worst affecting level counts. In the day files, availability and integrity show the
+worse of the run record's level and the incident level; confidentiality shows the incident level
+alone (the record's own level only while no declared snapshot exists yet). Slots without a run stay
+`-`: incidents never colour what was not measured. The colours are therefore a function of the
+*latest* state of the incidents, while each run record keeps what was known when it ran. The
+summary is derived from the day files, so a declared major availability incident lowers uptime.
+
+**Change events.** `data/v1/cia/changes.json` holds the last 500 change events, newest first,
+derived only from run records and incident facts; `verify cia` derives them again and compares
+byte for byte. `data/v1/cia/changes-recent.json` is its first 30 events, small enough for a first
+screen, and is checked the same way. The rules are fixed. The first recorded slot sets each service's state without an
+event. A level change is entered after the debounce: for availability 3 consecutive recorded slots
+at the new level when it is worse and 2 when it is better, for integrity 1; slots not measured
+(including vantage failures) are skipped, neither counted nor interrupting. Confidentiality has no
+level events: its changes are incident events. The other kinds are a newly verified release, a
+witness finding, an incident opened, updated, resolved or removed, *record delayed* (15 minutes or
+more without a record, never "down"), *record resumed* and the auditor's *vantage* failure. The
+feeds carry the same events, 100 of each, and are a convenience for subscribers: the record is
+the files under `data/`.
+
+```sh
+go run ./tools/verify cia
+```
+
+For every run record it checks what JSON Schema cannot say: each code has the level the table gives,
+each dimension is the worst of its checks, the checks come in the table's order, the slot is the
+file name, `prev` is the SHA-256 of the previous record's bytes, and there is at most one record per
+slot. Then it **recomputes every view from the records** and compares byte for byte: the day files
+(`data/v1/cia/days/`, apart from their `updatedAt`), `summary.json`, `latest.json`,
+`incidents.json`, `changes.json` and `changes-recent.json`. A view that says anything the records do
+not is an error.
+
+Without `-complete` the check accepts a slice of the history: the oldest record present may link to
+a predecessor that is not in the checkout, `firstRun` may be older than the oldest record present,
+and a day slot without a record file is skipped. That is what a shallow clone, or the example data,
+looks like. With `-complete` none of that is allowed: the chain must run unbroken from the first
+run to the latest. CI runs it with `-complete` every week; on the examples it fails on purpose,
+because they are a slice.
+
+```sh
+go run ./tools/verify cia -complete                     # the whole history, no gaps
+go run ./tools/verify cia data/v1/cia/runs/2026/10/27/1405Z.json   # just these records
+go run ./tools/verify cia -root examples                # the example data
+```
+
+### By hand
+
+```sh
+R=data/v1/cia/runs/2026/10/27/1405Z.json
+jq -r .prev.record $R                        # the previous run record
+sha256sum "$(jq -r .prev.record $R)"         # the same 64 hex digits as ...
+jq -r .prev.sha256 $R                        # ... this
+
+# What one service reported in this slot:
+jq '.services.vault | {availability: .availability.level, integrity: .integrity.level}' $R
+```
+
+A day file has, per service and dimension, a string of 288 letters (`o` ok, `w` warn, `f` fail, `-`
+not measured), one per slot; slot *i* of a day is `(hour × 60 + minute) / 5`, so 14:05Z is slot 169,
+the 170th letter:
+
+```sh
+jq -r .services.vault.availability data/v1/cia/days/2026/10/27.json | cut -c170
+```
+
+The 90-day view colours a whole day from its slot counts (ok, warn, fail), for every service:
+
+| Dimension | Day letter |
+| --- | --- |
+| availability | `-` if nothing was measured; `f` if at least three slots failed (15 minutes); `w` if one or two failed or any was degraded; else `o` |
+| integrity, confidentiality | `-` if nothing was measured; `f` if any slot failed; `w` if any was `warn`; else `o` |
+
+and its uptime is `(ok + warn) / (ok + warn + fail)` of the availability slots in the window.
+
+### Dated by the hour
+
+The hourly record's subject gains `cia`: the path and SHA-256 of the newest run record when the hour
+was stamped. `verify timestamp` checks that the file exists and hashes to that value; because run
+records are chained, the one token per hour that dates the witness also dates the whole CIA history.
+
+```sh
+sha256sum "$(jq -r .subject.cia.record data/v1/timestamps/2026/10/27/14Z.json)"
+jq -r .subject.cia.sha256 data/v1/timestamps/2026/10/27/14Z.json   # the same 64 hex digits
+```
+
+## 11. Verify a release with cosign
+
+Every service serves, from the same place, the evidence for the release it runs:
+
+```
+/.well-known/diagnos/manifest.json             every file of the release: SHA-256, size, where it is served
+/.well-known/diagnos/manifest.json.sig         Sigstore bundle: signature over manifest.json
+/.well-known/diagnos/provenance.sigstore.json  Sigstore bundle: SLSA provenance for the same digest
+/healthz                                       names the digest of the manifest it runs
+```
+
+The **release digest** is the SHA-256 of the exact bytes of `manifest.json`. The auditor verifies
+each new digest once and archives the evidence under
+`data/v1/cia/releases/<service>/<digest>/` with its `verdict.json`, so it outlives the deployment.
+A brand-new release shows `pending` (yellow) for at most one five-minute cycle, until the integrity
+check has judged it. `keys/signers.json` pins, per service, the only identity that counts: a GitHub
+Actions workflow on one branch of one repository. For `frontend`, `vault`, `sign` and `status` it is
+diagnos' monorepo, `.github/workflows/pipeline.yml` on `main`.
+
+```sh
+go run ./tools/verify release data/v1/cia/releases/vault/<digest>          # structure
+go run ./tools/verify release -cosign data/v1/cia/releases/vault/<digest>  # and the signatures
+```
+
+Without `-cosign` it checks that the SHA-256 of `manifest.json` is the directory name, that the
+manifest is valid and says the same as `verdict.json`. With `-cosign` it also runs the two cosign
+commands below, with the identity read from `keys/signers.json`.
+
+### By hand
+
+```sh
+SVC=vault
+D=data/v1/cia/releases/$SVC/<digest>
+S=keys/signers.json
+ISSUER=$(jq -r ".services.$SVC.issuer" $S)
+REPO=$(jq -r ".services.$SVC.repository" $S)
+REF=$(jq -r ".services.$SVC.ref" $S)
+IDENTITY="$REPO/$(jq -r ".services.$SVC.workflow" $S)@$REF"
+
+sha256sum $D/manifest.json        # must be <digest>, the directory name
+
+cosign verify-blob --bundle $D/manifest.json.sig \
+  --certificate-oidc-issuer "$ISSUER" --certificate-identity "$IDENTITY" \
+  --certificate-github-workflow-repository "${REPO#https://github.com/}" \
+  --certificate-github-workflow-ref "$REF" \
+  --certificate-github-workflow-sha "$(jq -r .commit $D/manifest.json)" \
+  $D/manifest.json
+
+cosign verify-blob-attestation --bundle $D/provenance.sigstore.json --type slsaprovenance1 \
+  --certificate-oidc-issuer "$ISSUER" --certificate-identity "$IDENTITY" \
+  $D/manifest.json
+```
+
+The first command proves the manifest was signed with a short-lived certificate that Sigstore's
+Fulcio issued to that workflow identity, and that the signature is in the public Rekor log. The
+second proves the SLSA provenance names the same digest and was signed by the same identity.
+cosign cannot require the repository's and owner's numeric ids, which `signers.json` also records
+(they survive renames and cannot be re-registered by someone else); they are in the certificate's
+Fulcio extensions `1.3.6.1.4.1.57264.1.15` (repository) and `1.3.6.1.4.1.57264.1.17` (owner), and
+the auditor requires them to match.
+
+### The served bytes
+
+For static content the manifest also says where each file is served. Compare one with the live
+site:
+
+```sh
+jq -r '.files[] | select(.served != null) | "\(.sha256)  \(.served)"' $D/manifest.json | head -3
+curl -s https://vault.diagnos.health/favicon.svg | sha256sum   # a path from the list above
+```
+
+The auditor samples these files continuously (25 per five-minute cycle by default, in manifest
+order), so a full pass takes from tens of minutes for a small site to many hours for a large one. A
+Worker's script (`served: null`) cannot be compared: see *What it proves, and what it does not* in
+the [README](README.md).
+
+### The status page
+
+`status` is a service like the others, and static. `https://status.diagnos.health/healthz` has
+`build.digest`, which is the SHA-256 of `https://status.diagnos.health/.well-known/diagnos/manifest.json`;
+the bundles are next to it. The same files are served on its second door,
+`https://imgexam-auditor-production.s3-website.fr-par.scw.cloud/`, and the auditor samples both.
+The auditor publishes a new version of the page only after it has verified the release as above, so
+what `verify release` says about the archived `status` release is what both doors serve.
+
+## 12. Verify the declared incidents
+
+Some things cannot be measured from outside, so diagnos **declares** them in
+[`incidents/`](incidents) (the format, the categories `C`, `I`, `A` and what each field does are in
+[`incidents/README.md`](incidents/README.md)). The auditor opens incidents of its own too; those are
+the events of section 10.
+
+```sh
+go run ./tools/verify incidents incidents/*.md examples/incidents/*.md
+```
+
+It parses each file with the same grammar the auditor uses, applies every rule (file name and `id`,
+no `auto-` slug, fields and `categories`, times, severity and status, `resolved_at` only when
+resolved, lengths, the bilingual body) and prints which files are published. A file with
+`publish: false` is checked and then ignored, which is why the shipped template is valid but never
+counted.
+
+The auditor writes a snapshot of the declared incidents,
+`data/v1/cia/incidents/YYYY/MM/DD/HHMMZ.json`, whenever they change. `data/v1/cia/incidents.json`
+repeats its items next to the automatic incidents and says which snapshot it used (`declared`).
+Each declared item records the Git `blob` of its file and the commit the folder was read at, so you
+can check that what is shown is what was committed (this needs the full history, `git fetch
+--unshallow`):
+
+```sh
+C=$(jq -r .declared.commit data/v1/cia/incidents.json)
+jq -r '.incidents[] | select(.source == "declared") | "\(.blob) \(.file)"' data/v1/cia/incidents.json
+git show "$C:incidents/<id>.md" | git hash-object --stdin     # the same blob id
+```
+
+Run records link to the snapshot in force (`incidents.snapshot.sha256`) and the hourly timestamps
+pin the run records, so editing or deleting a declaration later leaves a visible trail. What
+`verify cia` adds is the colours: it recomputes each day's letters from the latest state of the
+incidents and the rule in section 10, checks that every `relates` names an automatic incident, and
+that no lasting failure went without an incident. It cannot tell whether an incident that was
+never declared happened.
