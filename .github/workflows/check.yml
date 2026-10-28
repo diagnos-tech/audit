@@ -1,5 +1,6 @@
-# Code, schemas, docs and example data. Runs on every pull request and on pushes that are not
-# only data (the witness's commits are checked by data.yml).
+# Code, schemas, incident declarations and example data. Runs on pull requests and on pushes that
+# are not only data: the auditor commits to develop every five minutes, and those commits are
+# checked once an hour by data.yml instead.
 name: Check
 
 on:
@@ -48,8 +49,5 @@ jobs:
       - name: Examples verify, tokens included
         run: go run ./tools/verify all -root examples -openssl -q
 
-      - name: Page scripts parse
-        run: |
-          for f in assets/*.js assets/views/*.js; do
-            node --input-type=module --check < "$f" || { echo "::error file=$f::does not parse"; exit 1; }
-          done
+      - name: Incidents follow the format
+        run: go run ./tools/verify incidents incidents/*.md examples/incidents/*.md

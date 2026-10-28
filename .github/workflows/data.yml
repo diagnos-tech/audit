@@ -1,19 +1,25 @@
-# The witness's commits. On every push it validates the files the push added against the schemas,
-# runs the verifier on the new records, and rejects any change to an existing dated record. Every
-# week (and on demand) it checks the whole record from the first file to the last.
+# Verifies the record the auditor commits to develop. The auditor commits every five minutes, so no
+# workflow runs per data commit: this one runs once an hour and checks every commit since its last
+# successful run. Every Monday, and on demand, it checks the whole record as a complete history.
+# A pull request must not touch data/ at all: people change keys, schemas and incidents; the auditor
+# writes the record.
 name: Data
 
 on:
-  push:
-    branches: [develop]
-    paths: ["data/**", "keys/**", "schemas/**"]
-  pull_request:
-    paths: ["data/**", "keys/**"]
   schedule:
-    - cron: "23 5 * * 1" # Mondays 05:23 UTC
+    - cron: "17 * * * *" # every hour: the commits since the last successful run
+    - cron: "23 5 * * 1" # Mondays 05:23 UTC: the whole record, no gaps allowed
   workflow_dispatch:
+    inputs:
+      full:
+        description: "Check the whole record as a complete history (-complete) instead of the new commits"
+        type: boolean
+        default: false
+  pull_request:
+    paths: ["data/**", "keys/**", "schemas/**"]
 
 permissions:
+  actions: read # gh run list: where the last successful run stopped
   contents: read
 
 concurrency:
@@ -35,60 +41,140 @@ jobs:
           go-version: "1.24"
           cache-dependency-path: tools/go.sum
 
+      # For `verify release -cosign` and `verify all -cosign`: archived release evidence is
+      # re-checked with the same tool anyone can run (VERIFY.md).
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.3
+
+      # Decides what to check and rejects what must never change:
+      #   range  the commits since the last successful run (the hourly run)
+      #   full   everything: Mondays, on demand, a new key or schema, or no earlier run to start from
+      #   none   nothing new
       - name: What changed
         id: scope
         env:
+          GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
-          BEFORE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          SCHEDULE: ${{ github.event.schedule }}
+          FULL: ${{ inputs.full }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          if [ "$EVENT" != push ] && [ "$EVENT" != pull_request ] || [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ]; then
-            echo "mode=full" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git fetch --no-tags --depth=1 origin "$BEFORE"
+          # Records are immutable: the hourly chain pins their exact bytes, so a dated record may
+          # only be added. These views are rewritten by every sync (CONTRACTS §7.1).
+          views='^data/v1/((latest|state|sync)\.json|index/.*|cia/((latest|summary|incidents|changes|changes-recent)\.json|days/.*))$'
+          mode=range complete=false
+          case "$EVENT" in
+            schedule) if [ "$SCHEDULE" = "23 5 * * 1" ]; then mode=full complete=true; fi ;;
+            workflow_dispatch) if [ "$FULL" = true ]; then mode=full complete=true; fi ;;
+            pull_request) mode=pull_request ;;
+          esac
 
-          # Dated records are immutable: the hourly chain pins their exact bytes. Only the summaries
-          # (latest.json, state.json, month indexes) may change.
-          rewritten="$(git diff --name-only --diff-filter=DMRT "$BEFORE" HEAD -- data/ \
-            ':(exclude)data/v1/latest.json' ':(exclude)data/v1/state.json' ':(exclude)data/v1/index/**')"
-          if [ -n "$rewritten" ]; then
-            echo "::error::records are immutable, but this change modifies or deletes:"
-            echo "$rewritten"
-            exit 1
+          if [ "$mode" = pull_request ]; then
+            git fetch --no-tags --depth=1 origin "$PR_BASE"
+            touched="$(git diff --name-only "$PR_BASE" HEAD -- data/)"
+            if [ -n "$touched" ]; then
+              echo "::error::data/ is written only by the auditor, never by a pull request; this one touches:"
+              echo "$touched"
+              exit 1
+            fi
+            # New keys or schemas can change the verdict on old files: check everything.
+            if [ -n "$(git diff --name-only "$PR_BASE" HEAD -- keys/ schemas/)" ]; then mode=full; else mode=none; fi
           fi
 
-          # New keys or schemas can change the verdict on old files: check everything.
-          if [ -n "$(git diff --name-only "$BEFORE" HEAD -- keys/ schemas/)" ]; then
-            echo "mode=full" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [ "$mode" = range ]; then
+            head="$(git rev-parse HEAD)"
+            base="$(gh run list --workflow data.yml --branch "$GITHUB_REF_NAME" --status success --limit 1 \
+              --json headSha --jq '.[0].headSha // empty')"
+            if [ -z "$base" ]; then # first run: start 24 hours back
+              until="$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)"
+              base="$(gh api "repos/$GITHUB_REPOSITORY/commits?sha=$GITHUB_REF_NAME&until=$until&per_page=1" \
+                --jq '.[0].sha // empty')"
+            fi
+            if [ -z "$base" ]; then
+              echo "no earlier successful run and no commit older than 24 hours: checking everything"
+              mode=full
+            elif [ "$base" = "$head" ]; then
+              mode=none
+            else
+              # The history of the range, with a margin for clock differences, so each commit's
+              # changes can be listed one by one: a record added and then rewritten within the hour
+              # would be invisible in the net difference.
+              when="$(gh api "repos/$GITHUB_REPOSITORY/commits/$base" --jq .commit.committer.date)"
+              if [ -z "$when" ]; then echo "::error::cannot read the date of commit $base"; exit 1; fi
+              git fetch --no-tags --shallow-since="$(date -u -d "$when - 10 minutes" +%Y-%m-%dT%H:%M:%SZ)" origin "$head"
+              if ! git merge-base --is-ancestor "$base" "$head"; then
+                echo "::error::the last verified commit $base is not an ancestor of $head: the history was rewritten"
+                exit 1
+              fi
+              rewritten="$(git log --format= --name-only --diff-filter=DMT "$base..$head" -- data/ \
+                | grep -v '^$' | sort -u | grep -Ev "$views" || true)"
+              if [ -n "$rewritten" ]; then
+                echo "::error::records are immutable, but commits since $base modify or delete:"
+                echo "$rewritten"
+                exit 1
+              fi
+              if [ -n "$(git diff --name-only "$base" "$head" -- keys/ schemas/)" ]; then
+                mode=full
+              else
+                git diff --name-only --diff-filter=AM "$base" "$head" -- data/ > "$RUNNER_TEMP/changed.txt"
+                # Too many to pass as arguments (a long outage): the whole record is checked instead.
+                if [ "$(wc -l < "$RUNNER_TEMP/changed.txt")" -gt 5000 ]; then mode=full; fi
+              fi
+              echo "range $base..$head"
+            fi
           fi
 
-          git diff --name-only --diff-filter=AM "$BEFORE" HEAD -- data/ > "$RUNNER_TEMP/changed.txt"
-          echo "mode=changed" >> "$GITHUB_OUTPUT"
-          echo "$(wc -l < "$RUNNER_TEMP/changed.txt") data file(s) added or updated"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "complete=$complete" >> "$GITHUB_OUTPUT"
+          echo "mode: $mode (complete: $complete)"
+          {
+            echo "### Data check"
+            echo "mode **$mode**, complete history required: $complete"
+            if [ -s "$RUNNER_TEMP/changed.txt" ]; then echo "$(wc -l < "$RUNNER_TEMP/changed.txt") data files added or updated"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Schemas and verifier on the new files
-        if: steps.scope.outputs.mode == 'changed'
+        if: steps.scope.outputs.mode == 'range'
         run: |
           set -euo pipefail
           mapfile -t files < "$RUNNER_TEMP/changed.txt"
           if [ ${#files[@]} -eq 0 ]; then echo "no data files changed"; exit 0; fi
           tools/ci/validate-json.sh "${files[@]}"
-          witness=() timestamps=() findings=()
+          witness=() timestamps=() findings=() cia=() releases=()
           for f in "${files[@]}"; do
             case "$f" in
               data/v1/*/witness/*.json) witness+=("$f") ;;
               data/v1/timestamps/*.json) timestamps+=("$f") ;;
               data/v1/*/findings/*.json) findings+=("$f") ;;
+              # Run records, incident snapshots and events, and the views derived from them.
+              data/v1/cia/runs/*.json | data/v1/cia/incidents/*.json | data/v1/cia/days/*.json) cia+=("$f") ;;
+              data/v1/cia/summary.json | data/v1/cia/latest.json | data/v1/cia/incidents.json | data/v1/cia/changes.json | data/v1/cia/changes-recent.json) cia+=("$f") ;;
+              # Archived release evidence: one directory per release digest.
+              data/v1/cia/releases/*/*/*) releases+=("$(dirname "$f")") ;;
             esac
           done
           if [ ${#witness[@]} -gt 0 ]; then go run ./tools/verify witness -q "${witness[@]}"; fi
           if [ ${#timestamps[@]} -gt 0 ]; then go run ./tools/verify timestamp -openssl -q "${timestamps[@]}"; fi
           if [ ${#findings[@]} -gt 0 ]; then go run ./tools/verify finding -q "${findings[@]}"; fi
+          if [ ${#cia[@]} -gt 0 ]; then go run ./tools/verify cia -q "${cia[@]}"; fi
+          if [ ${#releases[@]} -gt 0 ]; then
+            mapfile -t releases < <(printf '%s\n' "${releases[@]}" | sort -u)
+            go run ./tools/verify release -cosign -q "${releases[@]}"
+          fi
 
+      # The weekly run and a manual run with `full` check the record as a complete history: no gap
+      # in the run chain, no missing predecessor, every release re-verified with cosign. A change
+      # to keys or schemas re-checks everything but does not demand a gap-free history, so a hole
+      # left by an old outage never blocks an unrelated change.
       - name: The whole record
         if: steps.scope.outputs.mode == 'full'
+        env:
+          COMPLETE: ${{ steps.scope.outputs.complete }}
         run: |
+          set -euo pipefail
           tools/ci/validate-json.sh
-          go run ./tools/verify all -openssl -q
+          flags=(-openssl -q)
+          if [ "$COMPLETE" = true ]; then flags+=(-complete -cosign); fi
+          go run ./tools/verify all "${flags[@]}"

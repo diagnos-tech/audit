@@ -1,0 +1,152 @@
+# The dead man's switch, outside Scaleway: once an hour it checks that the status page answers on
+# both of its doors, that the feeds are served on both, that the record is fresh on both copies, and
+# that the two copies hold the same bytes. A failing run e-mails the owner (GitHub's default for
+# failed scheduled workflows).
+#
+# It needs no checkout, no token and no third-party action: curl, jq and bash only.
+name: Watchdog
+
+on:
+  schedule:
+    - cron: "42 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: false
+
+env:
+  # The canonical door (GitHub Pages) and the Scaleway copy of the same site.
+  PAGE_URL: https://status.diagnos.health
+  SCALEWAY_PAGE_URL: https://imgexam-auditor-production.s3-website.fr-par.scw.cloud
+  # The record and the feeds, served by the public prefixes of the one Scaleway bucket; the auditor
+  # mirrors the record to develop (RAW_URL).
+  # TODO(gustavo): confirm the production bucket name (here and in SCALEWAY_PAGE_URL).
+  BUCKET_URL: https://imgexam-auditor-production.s3.fr-par.scw.cloud
+  RAW_URL: https://raw.githubusercontent.com/diagnos-tech/audit/develop
+  MAX_AGE_MINUTES: "20" # data/v1/cia/latest.json must have been updated this recently
+  FEEDS: "incidents.atom incidents.rss incidents.json all.atom all.rss all.json" # under feeds/
+  SPOT_CHECKS: "3" # run records compared byte for byte, each older than 2 hours
+
+jobs:
+  watch:
+    name: Doors, freshness and copies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Both doors answer /healthz
+        run: |
+          set -uo pipefail
+          failed=0
+          echo "### Doors" >> "$GITHUB_STEP_SUMMARY"
+          for door in "GitHub Pages|$PAGE_URL" "Scaleway copy|$SCALEWAY_PAGE_URL"; do
+            name="${door%%|*}" url="${door#*|}/healthz"
+            body="$(mktemp)"
+            code="$(curl -sS --max-time 20 --retry 2 --retry-all-errors --retry-delay 5 -o "$body" -w '%{http_code}' "$url")" || code=000
+            if [ "$code" = 200 ] && jq -e '.ok == true and .service == "status"' "$body" > /dev/null 2>&1; then
+              echo "- ok: $name answered 200 with ok=true, service=status ($url)" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- FAILED: $name: HTTP $code, or a body that is not {ok: true, service: status} ($url)" | tee -a "$GITHUB_STEP_SUMMARY"
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+      # The feeds are what subscribers poll. Atom and RSS must at least start with their root
+      # element; a JSON Feed must declare version 1.x.
+      - name: The feeds answer on both doors
+        if: ${{ !cancelled() }}
+        run: |
+          set -uo pipefail
+          failed=0
+          echo "### Feeds" >> "$GITHUB_STEP_SUMMARY"
+          for door in "GitHub Pages|$PAGE_URL" "Scaleway bucket|$BUCKET_URL"; do
+            name="${door%%|*}" base="${door#*|}"
+            for feed in $FEEDS; do
+              url="$base/feeds/$feed" body="$(mktemp)"
+              code="$(curl -sS --max-time 20 --retry 2 --retry-all-errors --retry-delay 5 -o "$body" -w '%{http_code}' "$url")" || code=000
+              case "$feed" in
+                *.rss) shaped() { grep -Eq '<rss[[:space:]>]' "$body"; } ;;
+                *.atom) shaped() { grep -Eq '<feed[[:space:]>]' "$body"; } ;;
+                *.json) shaped() { jq -e '.version | startswith("https://jsonfeed.org/version/1")' "$body" > /dev/null 2>&1; } ;;
+              esac
+              if [ "$code" != 200 ]; then
+                echo "- FAILED: $name feeds/$feed: HTTP $code" | tee -a "$GITHUB_STEP_SUMMARY"
+                failed=1
+              elif ! shaped; then
+                echo "- FAILED: $name feeds/$feed: answered 200 but is not a well-shaped feed" | tee -a "$GITHUB_STEP_SUMMARY"
+                failed=1
+              else
+                echo "- ok: $name feeds/$feed" | tee -a "$GITHUB_STEP_SUMMARY"
+              fi
+            done
+          done
+          exit "$failed"
+
+      - name: The record is fresh on both copies
+        if: ${{ !cancelled() }}
+        run: |
+          set -uo pipefail
+          failed=0
+          echo "### Freshness (limit: $MAX_AGE_MINUTES minutes)" >> "$GITHUB_STEP_SUMMARY"
+          for copy in "Scaleway bucket|$BUCKET_URL" "GitHub raw|$RAW_URL"; do
+            name="${copy%%|*}" url="${copy#*|}/data/v1/cia/latest.json"
+            updated="$(curl -fsS --max-time 20 --retry 2 --retry-all-errors --retry-delay 5 "$url" | jq -er .updatedAt)" || updated=""
+            updated_at=""
+            if [ -n "$updated" ]; then updated_at="$(date -u -d "$updated" +%s 2> /dev/null)" || updated_at=""; fi
+            if [ -z "$updated_at" ]; then
+              echo "- FAILED: $name: cannot read updatedAt from $url" | tee -a "$GITHUB_STEP_SUMMARY"
+              failed=1
+              continue
+            fi
+            age=$(( ($(date -u +%s) - updated_at) / 60 ))
+            if [ "$age" -lt "$MAX_AGE_MINUTES" ]; then
+              echo "- ok: $name updated $age min ago ($updated)" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- FAILED: $name updated $age min ago ($updated), limit $MAX_AGE_MINUTES" | tee -a "$GITHUB_STEP_SUMMARY"
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+      # Run records are immutable facts: the two copies must hold the same bytes. A slot with no
+      # record on either copy is an auditor gap (shown grey on the page): another slot is drawn.
+      # A record on only one copy means the mirror and the bucket disagree.
+      - name: Run records are byte-equal on both copies
+        if: ${{ !cancelled() }}
+        run: |
+          set -uo pipefail
+          failed=0 found=0 attempts=0
+          echo "### Run records, bucket against GitHub raw" >> "$GITHUB_STEP_SUMMARY"
+          status() { # prints the HTTP status of $1 (000 when unreachable); the body goes to $2
+            local code
+            code="$(curl -sS --max-time 20 --retry 2 --retry-all-errors --retry-delay 5 -o "$2" -w '%{http_code}' "$1")" || code=000
+            echo "$code"
+          }
+          while [ "$found" -lt "$SPOT_CHECKS" ] && [ "$attempts" -lt 30 ]; do
+            attempts=$((attempts + 1))
+            # A random five-minute slot between 2 and 48 hours ago.
+            slot=$(( ($(date -u +%s) - (120 + RANDOM % 2761) * 60) / 300 * 300 ))
+            path="data/v1/cia/runs/$(date -u -d "@$slot" +%Y/%m/%d/%H%MZ).json"
+            from_bucket="$(mktemp)" from_raw="$(mktemp)"
+            a="$(status "$BUCKET_URL/$path" "$from_bucket")"
+            b="$(status "$RAW_URL/$path" "$from_raw")"
+            if [ "$a" = 404 ] && [ "$b" = 404 ]; then continue; fi # an auditor gap
+            found=$((found + 1))
+            if [ "$a" != 200 ] || [ "$b" != 200 ]; then
+              echo "- FAILED: $path: bucket answered $a, GitHub raw answered $b" | tee -a "$GITHUB_STEP_SUMMARY"
+              failed=1
+            elif [ "$(sha256sum < "$from_bucket")" = "$(sha256sum < "$from_raw")" ]; then
+              echo "- ok: $path: same bytes, sha256 $(sha256sum < "$from_raw" | cut -d' ' -f1)" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- FAILED: $path: the bucket and GitHub raw hold different bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+              failed=1
+            fi
+          done
+          if [ "$found" -lt "$SPOT_CHECKS" ]; then
+            echo "- FAILED: only $found of $SPOT_CHECKS run records found in $attempts draws" | tee -a "$GITHUB_STEP_SUMMARY"
+            failed=1
+          fi
+          exit "$failed"
