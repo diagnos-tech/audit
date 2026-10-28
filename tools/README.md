@@ -10,17 +10,20 @@ dependency is `golang.org/x/mod` (for `sumdb/note`).
 | [`genexamples/`](genexamples) | writes the example data set under `examples/`, deterministically; its tests also check the verifier against every kind of tampering |
 | [`ci/validate-json.sh`](ci/validate-json.sh) | validates data files against `schemas/v1` with a pinned validator |
 | [`internal/check`](internal/check) | every check the verifier runs, one file per kind of record |
-| [`internal/cia`](internal/cia) | the CIA views derived from the facts: day files with latency, the 90-day summary, the latest headline, incident colours, the incident list and the change events |
+| [`internal/cia`](internal/cia) | the CIA views derived from the facts: day files with latency (and, per witness, its statistics), the 90-day summary, the latest headline, incident colours, the incident list and the change events; how the two witnesses' results combine |
 | [`internal/incidents`](internal/incidents) | the grammar and rules of `incidents/<id>.md`, implemented from the contract alone |
-| [`internal/record`](internal/record) | the v1 file types, their paths, strict decoding, and reading from a clone or from a web server that serves the same paths |
+| [`internal/record`](internal/record) | the file types (`cia-run/v1` and `cia-run/v2`, the witnesses' measurements), their paths, strict decoding, and reading from a clone or from a web server that serves the same paths |
 | [`internal/merkle`](internal/merkle) | RFC 9162 hashing, consistency proofs (build and verify), an in-memory tree |
 | [`internal/tiles`](internal/tiles) | reads node hashes from a C2SP tlog-tiles log over HTTP (`tilestest` serves one in tests) |
-| [`internal/cosig`](internal/cosig) | C2SP `cosignature/v1` on top of `sumdb/note` |
+| [`internal/cosig`](internal/cosig) | C2SP `cosignature/v1` on top of `sumdb/note`, and the plain signed-note verifier of the same key (a witness signs its measurement with it) |
 | [`internal/jcs`](internal/jcs) | RFC 8785 canonical JSON, for the hourly imprint |
 | [`internal/rfc3161`](internal/rfc3161) | reads a `TimeStampResp`'s fields (the signature is left to OpenSSL) |
 
 `verify cia` recomputes every view of the CIA record (day files, summary, latest, incident list, change
-events) from the run records and the incident facts with the projections of `internal/cia` and compares bytes; the auditor has its own
+events) from the run records and the incident facts with the projections of `internal/cia` and
+compares what they say, whether a file is laid out compactly or indented; for a `cia-run/v2` record
+it also verifies each witness's signed measurement and recomputes the combined verdicts from them.
+A witness whose key is not published yet is reported, not failed. The auditor has its own
 implementation of the same contract, so the two check each other. `-complete` is for the real record
 (its oldest run record is the first run); the example data is a slice and is checked without it.
 
@@ -31,6 +34,7 @@ responses from every authority the witness uses, and the example tokens verify w
 `openssl ts -verify`.
 
 ```sh
-go test ./tools/...
+go test -race ./tools/...
 go vet ./tools/... && gofmt -l tools
+staticcheck ./tools/...
 ```

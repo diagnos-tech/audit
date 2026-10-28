@@ -6,7 +6,8 @@ The keys needed to check every record. They are public by nature; publishing the
 | --- | --- | --- |
 | `logs/audit.vkey` | the `audit` log's checkpoint key, `transparency.diagnos.health/audit/v1` | signed-note Ed25519 (`0x01`) |
 | `logs/signs.vkey` | the `signs` log's checkpoint key, `transparency.diagnos.health/signs/v1` | signed-note Ed25519 (`0x01`) |
-| `witness/auditor.vkey` | the witness's key, `witness.diagnos.health/auditor/v1` | `cosignature/v1` Ed25519 (`0x04`) |
+| `witness/auditor.vkey` | the primary witness's key (Europe, the only one that publishes), `witness.diagnos.health/auditor/v1` | `cosignature/v1` Ed25519 (`0x04`) |
+| `witness/latam.vkey` | the second witness's key (Latin America), `witness.diagnos.health/latam/v1`; added later, see below | `cosignature/v1` Ed25519 (`0x04`) |
 | `tsa/<provider>.pem` | each time-stamping authority's CA chain | X.509, see [tsa/README.md](tsa/README.md) |
 | `signers.json` | for each audited service, the CI identity whose signature a release must carry | JSON, `signers/v1` ([schema](../schemas/v1/signers.schema.json)) |
 
@@ -19,6 +20,16 @@ request.** Until then `logs/` and `witness/` do not exist and the tools say so i
 The authorities' roots in `tsa/` are already here: they are public, chosen by the witness's code,
 and listed with their fingerprints in [tsa/README.md](tsa/README.md). The example keys used by the
 example data live in [`examples/keys`](../examples/keys) and must never be copied here.
+
+**The second witness's key is added after the first one's, in a pull request of its own.** The
+services are measured from two regions by two independent witnesses, each with its own key, and
+every run record from the second witness's first day on carries both of their signed measurements.
+Until `witness/latam.vkey` exists the verifier treats the key as absent, which is not a failure: it
+checks everything else about that witness's records, and says, with a warning, that their signatures
+were not checked. A `latam.vkey` that exists and does not match the signatures is a failure, and the
+primary witness's key is never optional. One file serves both kinds of signature the witness makes:
+a `cosignature/v1` on a checkpoint, and an ordinary signed-note signature (algorithm `0x01`) on its
+measurement; the second is derived from the same 32 bytes.
 
 ## `signers.json`: who may sign a release
 
@@ -46,8 +57,8 @@ numeric ids come from `gh api repos/<owner>/<repo> --jq '.id, .owner.id'`.
 ## Rotation
 
 A key is never edited in place. A new log key comes with a new origin (`…/v2`) and a new witness key
-with a new name (`…/auditor/v2`), and gets its own file; old keys stay, because old records remain
-signed with them. `signers.json` is the exception, because it is not a key but a current policy: it
+with a new name (`…/auditor/v2`, `…/latam/v2`), and gets its own file; old keys stay, because old
+records remain signed with them. `signers.json` is the exception, because it is not a key but a current policy: it
 always states who may sign a release now, and the release evidence archived under
 `data/v1/cia/releases/` keeps the identity that was valid when the release was judged (its
 `verdict.json` records it).

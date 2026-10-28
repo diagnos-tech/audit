@@ -75,11 +75,19 @@ auditor fixam todas as versões que ele leu.
 Nothing to install but Go 1.24+ (and `openssl` for the token checks):
 
 ```sh
-go test ./tools/...                         # unit tests, example data, tampering, interop vectors
+go test -race ./tools/...                   # unit tests, example data, tampering, interop vectors
 go run ./tools/verify all -root examples -openssl
 go run ./tools/verify incidents incidents/*.md examples/incidents/*.md
 tools/ci/validate-json.sh -root examples    # every example file against schemas/v1
 go vet ./tools/... && gofmt -l tools        # must print nothing
+staticcheck ./tools/...                     # honnef.co/go/tools/cmd/staticcheck, the version check.yml pins
+```
+
+The parsers and the signature checks have fuzz targets (`FuzzDecodeRun`, `FuzzParseMeasurement`,
+`FuzzOpenMeasurement`, `FuzzCheckRunRecord`); `go test` runs their seed cases, and to let one run for a while:
+
+```sh
+go test ./tools/internal/check -run '^$' -fuzz '^FuzzOpenMeasurement$' -fuzztime 60s
 ```
 
 ## The example data
@@ -89,7 +97,9 @@ go vet ./tools/... && gofmt -l tools        # must print nothing
 when the first authority failed, an hour when every authority failed, an equivocation finding, and
 the availability, integrity and confidentiality record of four services over the same period, with
 an outage, slow slots, an auditor gap, a published incident and a release that goes from unsigned
-to verified, plus 90 days of views. Everything is signed with example keys derived from public
+to verified, plus 90 days of views. From 10:00Z on the last day the services are measured by two
+witnesses (Europe and Latin America), with the situations that follow: a witness that is silent, a
+failure seen from one region only, from both, and from the only witness measuring. Everything is signed with example keys derived from public
 seeds and named under the reserved `.example` domain.
 
 It is generated, deterministically:
@@ -111,7 +121,10 @@ its normative form. To change a format:
 1. change the contract first and say why;
 2. change the schema, `tools/internal/record`, the checks and the generator together;
 3. keep it backward compatible (new optional fields only), or start `schemas/v2` and `data/v2`
-   alongside: `v1` files are never rewritten.
+   alongside: `v1` files are never rewritten. A *fact* whose meaning changes gets a new schema id
+   (`cia-run/v2` lives at the path of `cia-run/v1`, in the same chain, and both are valid); a
+   *view* may only gain optional fields, so that a reader that ignores them reads what it always
+   read.
 
 ## Conventions
 
@@ -128,8 +141,8 @@ its normative form. To change a format:
 
 ## Pull requests
 
-Describe what changed and how you checked it (commands run). CI must pass: tests, `go vet`,
-`gofmt`, schema validation, `verify all` on the examples and `verify incidents` on every incident
+Describe what changed and how you checked it (commands run). CI must pass: tests (with the race
+detector), `go vet`, `staticcheck`, `gofmt`, schema validation of both versions of the run record, `verify all` on the examples and `verify incidents` on every incident
 file. A pull request that changes `keys/` or `schemas/` also triggers a check of the whole record.
 
 ## For maintainers

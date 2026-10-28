@@ -7,7 +7,9 @@ what it proves and what it does not.
 The record has two parts. The **witness** part (sections 3 to 6) checks diagnos' transparency logs
 and dates the record every hour. The **availability, integrity and confidentiality** part (sections
 10 to 12) checks the four services every five minutes: run records and the views built from them,
-the signed releases of the services, and the incidents diagnos declared.
+the signed releases of the services, and the incidents diagnos declared. Since the services are
+measured from two regions by two independent witnesses, section 13 explains how to check what each
+witness signed and how the two are combined.
 
 **Try every command on the example data first:** run them from `examples/` (or add `-root examples`
 to the `go run` commands). The examples are signed with published example keys and include an
@@ -27,6 +29,7 @@ Sigstore bundle). Paths below are examples too; use the ones of the record you a
 10. [Verify the run records and the views](#10-verify-the-run-records-and-the-views)
 11. [Verify a release with cosign](#11-verify-a-release-with-cosign)
 12. [Verify the declared incidents](#12-verify-the-declared-incidents)
+13. [Verify the two witnesses](#13-verify-the-two-witnesses)
 
 ## What you need
 
@@ -72,9 +75,15 @@ checks on a fourth, the pinned signers:
 | File | Key | Format |
 | --- | --- | --- |
 | `keys/logs/audit.vkey`, `keys/logs/signs.vkey` | each log's checkpoint key | signed-note verifier key, Ed25519 (`0x01`) |
-| `keys/witness/auditor.vkey` | the witness's cosignature key | `cosignature/v1` verifier key (`0x04`) |
+| `keys/witness/auditor.vkey` | the primary witness's (Europe) cosignature key | `cosignature/v1` verifier key (`0x04`) |
+| `keys/witness/latam.vkey` | the second witness's (Latin America) cosignature key; added by a reviewed pull request once the second witness is live | `cosignature/v1` verifier key (`0x04`) |
 | `keys/tsa/<provider>.pem` | the CA chain of each time-stamping authority | PEM certificates; see [keys/tsa/README.md](keys/tsa/README.md) |
 | `keys/signers.json` | for each service, the CI identity whose signature a release must carry | `signers/v1`; used in sections 10 and 11, see [keys/README.md](keys/README.md) |
+
+Until `keys/witness/latam.vkey` exists the verifier treats the second witness's key as absent, which
+is not a failure: it checks everything else about the second witness's records and says, with a
+warning, that their signatures were not checked. A key file that exists and does not match is a
+failure. The primary witness's key is never optional.
 
 A verifier key reads `<name>+<key hash>+<base64(algorithm byte ‖ 32-byte public key)>`. Its key hash
 is not decoration: it is the first four bytes of `SHA-256(name ‖ "\n" ‖ algorithm ‖ key)`, and you
@@ -334,7 +343,8 @@ existing record that is not a view, and validates every new file against
 ## 8. When something does not verify
 
 The exit status is 0 when every check passed, 1 when any failed, 2 for bad usage. Warnings (an hour
-without a token) do not fail the run. A gap in the run chain fails only with `-complete`
+without a token, a second-witness signature that cannot be checked because its key is not published
+yet, a witness that reports the published history changed) do not fail the run. A gap in the run chain fails only with `-complete`
 (section 10).
 
 If a real record does not verify, that is what this repository exists to expose. Keep a copy of the
@@ -357,6 +367,8 @@ an issue. Please include the command, its full output, the commit you checked ou
 | hourly imprint | SHA-256 of the RFC 8785 (JCS) form of `subject` | RFC 8785 |
 | timestamp token | the `TimeStampResp` (status and token) in DER, as the authority returned it | RFC 3161 |
 | run record | `cia-run/v1`: levels, checks and codes per service; `prev` is the SHA-256 of the previous record's bytes | [`cia-run.schema.json`](schemas/v1/cia-run.schema.json) |
+| run record, two witnesses | `cia-run/v2`: each witness's signed measurement (`witnesses`) and the combined verdicts (`services`); same path and chain as v1 | [`cia-run-v2.schema.json`](schemas/v1/cia-run-v2.schema.json) |
+| measurement note | a signed note, `diagnos-witness/measurement/v1`, `witness <id>`, `slot <slot>`, `request <SHA-256 or none>`, `measured <SHA-256 of the RFC 8785 form of measured>`; Ed25519 (`0x01`) with the witness's key | [C2SP signed-note](https://c2sp.org/signed-note), RFC 8785 |
 | incident event, incident list, change events | `cia-incident-event/v1` (one change of an automatic incident), `cia-incident-list/v1` (declared and automatic incidents in one list), `cia-changes/v1` (the last 500 change events) | [`cia-incident-event`](schemas/v1/cia-incident-event.schema.json), [`cia-incident-list`](schemas/v1/cia-incident-list.schema.json), [`cia-changes`](schemas/v1/cia-changes.schema.json) |
 | day file | `cia-day/v1`: three strings of 288 letters (`o` `w` `f` `-`) per service, one per five-minute slot, and the spans that are not green | [`cia-day.schema.json`](schemas/v1/cia-day.schema.json) |
 | release manifest | `release-manifest/v1`: every file of a release with SHA-256, size and served path; its SHA-256 is the release digest | [`release-manifest.schema.json`](schemas/v1/release-manifest.schema.json) |
@@ -391,7 +403,11 @@ form a chain like the hourly ones: a record cannot be removed or edited without 
 later link.
 
 Probes also record how long they took: each `healthz` check has `timings` (DNS, connect, TLS, first
-byte and total, in milliseconds) and each run has the `vantage` it ran from (`scaleway:fr-par`).
+byte and total, in milliseconds; the first byte is counted from the start of the attempt, so it
+includes the three phases before it) and each run has the `vantage` it ran from
+(`scaleway:fr-par`). The rest of this section is about `cia-run/v1`; `cia-run/v2`, which the
+records have from the day the second witness joined, keeps these rules for the combined verdicts and
+adds the ones of section 13.
 Day files add, per service, `latency {p50Ms, p95Ms, samples, slotsMs}`: the nearest-rank percentiles
 of the `healthz` latency of that day and the latency of each of its 288 slots, and the summary has
 `p95Ms` per day. These fields are additive and
@@ -455,7 +471,8 @@ go run ./tools/verify cia
 For every run record it checks what JSON Schema cannot say: each code has the level the table gives,
 each dimension is the worst of its checks, the checks come in the table's order, the slot is the
 file name, `prev` is the SHA-256 of the previous record's bytes, and there is at most one record per
-slot. Then it **recomputes every view from the records** and compares byte for byte: the day files
+slot. Then it **recomputes every view from the records** and compares what they say (a view written
+on one line and an indented one are the same view): the day files
 (`data/v1/cia/days/`, apart from their `updatedAt`), `summary.json`, `latest.json`,
 `incidents.json`, `changes.json` and `changes-recent.json`. A view that says anything the records do
 not is an error.
@@ -634,3 +651,109 @@ pin the run records, so editing or deleting a declaration later leaves a visible
 incidents and the rule in section 10, checks that every `relates` names an automatic incident, and
 that no lasting failure went without an incident. It cannot tell whether an incident that was
 never declared happened.
+
+## 13. Verify the two witnesses
+
+The services are measured from two regions, Europe and Latin America, each by its own **witness**
+(`europe`, `latam`) with its own key. From the day the second witness joined, the run records are
+`cia-run/v2`. They live at the same paths and in the same chain as `cia-run/v1` (`prev` links the
+previous record whatever its version), but they have another id because their meaning is not the
+same: the availability of a service is now a verdict over what two witnesses measured, and a reader
+that took it for one witness's answer would misread it.
+
+A `cia-run/v2` record has two parts:
+
+- `witnesses.<id>`: `status` (`ok` or `unavailable`), the `reason` when a witness is missing
+  (`timeout`, `unreachable`, `rejected`, `signature`, `invalid`, `skew`, or `off` when it is not
+  configured), and, when it measured, its signed `note` and the `measured` object it signs: every
+  service's probe (code, error class, attempts, status, TLS version and expiry, address, CDN
+  location, bytes and the phases of the time), what it did with each transparency log, and its
+  control probe. The primary witness (Europe) always has an entry, because it writes the record.
+- `services`: the **combined** result of each service, in the shape of v1, which anyone can
+  recompute from the measurements:
+
+| Europe | Latin America | Combined |
+| --- | --- | --- |
+| did not measure | did not measure | `none`, `vantage` |
+| measured | did not measure (silent, unavailable, `vantage` or `challenged`) | what Europe measured: one witness's own retry is the confirmation |
+| did not measure | measured | what Latin America measured |
+| failed | failed | `fail`, Europe's code: down, because the two agree |
+| failed | up or slow | `warn`, `regional`: reachable from one region only |
+| up or slow | failed | `warn`, `regional` |
+| otherwise | | the worse of the two, with the code of the first (Europe, then Latin America) at that level |
+
+The same rule combines the `checkpoint:<log>` checks. The `log:<log>` checks are evidence, not a
+vote: the worst of the witnesses counts, so a finding or a halt seen from one region fails
+integrity. A release is judged from Europe's probe alone. A witness that did not measure is *not
+measured*, never an outage.
+
+```sh
+go run ./tools/verify cia           # or: verify all
+```
+
+For a `cia-run/v2` record it checks, on top of section 10: that Europe has an entry and that every
+entry is consistent with its status; **the signature of each measurement note** with the key of its
+witness (`keys/witness/auditor.vkey`, `keys/witness/latam.vkey`), and that the note's lines agree
+with the record: the witness, the slot of the run (a note cannot be moved to another run), `request`
+(`none` for Europe, a digest for a witness that answers a request) and `measured`, the SHA-256 of the
+canonical (RFC 8785) JSON of the `measured` object, so a number changed after it was signed does not
+verify; that each witness measured exactly the services and the logs of the run, and that each probe
+and log is consistent with its own code (a failed probe names the phase it failed in, a timeout has
+no status, the phases fit in the total); the vantage rule for each witness on its own (a witness
+whose control probe failed, and whose every probe failed at the transport level, must be recorded as
+not measured, never as an outage); that the combined checks are exactly what the measurements
+combine to, by the table above; that two witnesses which read different roots for one size of a log
+(a *split view*) are recorded as a failing evidence check that names a finding; and the files the
+measurements name (each witness record and finding is in the namespace of the witness that made it,
+exists, and agrees with the size and root reported). A secondary witness's `peer` is its check of the
+primary's latest record: `ok` says it saw the bytes the repository has, and the verifier compares;
+`mismatch` is its signed statement that the published history changed, which the report shows as a
+warning and the change stream as a `witness-disagreement` event.
+
+The second witness keeps its own chain of witness records and findings under
+`data/v1/witnesses/latam/<log>/`, cosigned with its own key and linked to its own previous record;
+`verify witness` and `verify finding` check them like the primary's, and `verify all` walks both
+chains. The primary witness's files stay where they have always been.
+
+### By hand
+
+The digest of a measurement is that of the canonical JSON of `measured`. For these records, whose
+strings are plain ASCII and whose numbers are integers, `jq` produces it:
+
+```sh
+R=data/v1/cia/runs/2026/10/01/1405Z.json
+jq -jcS '.witnesses.latam.measured' $R | sha256sum        # the same 64 hex digits as ...
+jq -r '.witnesses.latam.note' $R | grep '^measured '       # ... this line of the signed note
+```
+
+The signature is plain Ed25519 over the five lines of the note, so OpenSSL checks it the way section 3
+checks a checkpoint, with the witness's key (the same 32 bytes as in its `cosignature/v1` key):
+
+```sh
+W=keys/witness/latam.vkey
+NAME=$(cut -d+ -f1 $W)
+jq -r .witnesses.latam.note $R | awk '/^$/ { exit } { print }' > note.txt
+{ printf '302a300506032b6570032100' | xxd -r -p; cut -d+ -f3- $W | base64 -d | tail -c 32; } > w.der
+jq -r .witnesses.latam.note $R | grep "^— $NAME " | cut -d' ' -f3 | base64 -d | tail -c 64 > w.sig
+openssl pkeyutl -verify -pubin -inkey w.der -keyform DER -rawin -in note.txt -sigfile w.sig
+```
+
+### What the views add
+
+A day file keeps, per service and witness, `regions.<id>`: one letter per slot from that witness's
+probe, the latency of the probes that succeeded (`slotsMs`, 288 values) with their statistics, the
+phases, the failures counted by class, the retries and the uptime. The statistics are *nearest rank*:
+the value at position `ceil(p × n / 100)` of the `n` sorted values, with `minMs` as p0 and `maxMs`
+as p100, and the mean rounded half up in integers. Only probes that succeeded are latency samples:
+a timeout is an error, counted in `errors`, not a very slow answer. With fewer than 20 samples p95
+is the maximum, and with fewer than 100 so is p99. `latest.json` adds each witness's probe per
+service and a `witnesses` object, and `summary.json` the 90 days of each region. `verify cia`
+recomputes all of them. The change stream adds `witness-unavailable` (a witness absent for three
+runs in a row), `witness-restored` (two runs back) and `witness-disagreement` (an answer that did not
+verify, a peer `mismatch`, or a split view); their summaries speak of the record, never of the
+services.
+
+```sh
+jq -r '.services.vault.regions.latam.availability' data/v1/cia/days/2026/10/01.json | cut -c169-173
+jq '.services.vault.regions.europe.latency | {samples, p50Ms, p95Ms, p99Ms, maxMs}' data/v1/cia/days/2026/10/01.json
+```

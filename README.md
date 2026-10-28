@@ -10,8 +10,9 @@
 This repository is the public, independent record of the **confidentiality, integrity and
 availability** of diagnos. Every five minutes the diagnos auditor checks four services, reads the
 incidents diagnos has declared, witnesses diagnos' transparency logs, publishes the result to a public
-Scaleway bucket and **commits the same files here, to `develop`, on every run**. Every hour an outside
-RFC 3161 time-stamping authority dates the whole record.
+Scaleway bucket and **commits the same files here, to `develop`, on every run**. The services are
+measured from two regions, Europe and Latin America, by two independent witnesses. Every hour an
+outside RFC 3161 time-stamping authority dates the whole record.
 
 People change only a few things here: they declare incidents by pull request, and they change the
 documents, schemas, keys and the verifier. Everything under `data/` is written by the auditor.
@@ -37,7 +38,7 @@ checked from them with standard tools, without trusting diagnos, the auditor, or
 
 | Dimension | What is checked, every five minutes | Colour on the page |
 | --- | --- | --- |
-| **Availability** | `GET /healthz` of each service answers 200 with a well-formed body, in time, over a valid TLS certificate; the transparency logs' checkpoints are readable | green: answered normally · yellow: slow, or certificate expiring · red: no valid answer |
+| **Availability** | `GET /healthz` of each service answers 200 with a well-formed body, in time, over a valid TLS certificate, from Europe and from Latin America; the transparency logs' checkpoints are readable | green: answered normally · yellow: slow, certificate expiring, or reachable from one region only · red: no valid answer |
 | **Integrity** | the release each service says it runs was signed by diagnos' CI workflow (Sigstore) with SLSA provenance, and the files it serves match the signed manifest; also that the witnessed transparency logs only grew | green: verified · yellow: cannot be confirmed (no evidence, verification pending) · red: evidence invalid or bytes differ |
 | **Confidentiality** | the incidents diagnos has declared in [`incidents/`](incidents) that affect the service at that time; nothing else colours it | green: none declared · yellow: low or medium · red: high or critical |
 
@@ -48,11 +49,51 @@ services are `diagnos.health` (website and app), `vault.diagnos.health` (the API
 encrypted exams), `sign.diagnos.health` (document signing) and `status.diagnos.health` (the status
 page itself: static, served on GitHub Pages and on its Scaleway copy).
 
+## Two witnesses, two regions
+
+The services are measured from two places at once, each by its own **witness** with its own key.
+A region on the page is a witness; the record never shows a witness's id without its name.
+
+| Witness (id) | Region on the page | Runs on | Key |
+| --- | --- | --- | --- |
+| `europe` | Europe | Scaleway, Paris. It is the only clock and the only witness that publishes: the one run record per slot is its. | [`keys/witness/auditor.vkey`](keys/README.md) |
+| `latam` | Latin America | Oracle Cloud, São Paulo. It has no clock and publishes nothing; when asked, it measures from where it is, signs what it measured and answers. | [`keys/witness/latam.vkey`](keys/README.md) |
+
+Each witness signs its own measurement, so a number from Latin America can be checked against
+Latin America's key and not against diagnos' say-so. The run record holds both signed
+measurements, and next to them the **combined** result of each service, which the verifier
+recomputes from them. The combination follows four rules:
+
+- **Red (down) only when the witnesses agree.** Both fail in the same slot, or only one witness
+  measured and its own retry confirms the failure.
+- **Amber, `regional`, when one fails and the other does not.** The service is reachable from one
+  region and not the other; the page names the region. It is never red on its own.
+- **A silent witness is neutral.** If a witness did not answer, did not verify, or ran out of time,
+  its measurement is *not measured* (grey) for that slot and the other witness decides alone.
+  That is never an outage of a service; after three runs in a row the change stream says that the
+  witness's measurements are unavailable, and after two good runs that they are back.
+- **Evidence is not a vote.** A finding or a halt on a transparency log, seen by either witness,
+  counts: showing one region a different tree than the other is exactly the attack a second witness
+  is there to catch. When both witnesses read two different roots for the same size of a log, the
+  log signed two trees and the record must say so.
+
+For each service and region a day file keeps the slots' colours and the latency of every successful
+probe (288 values, so any percentile can be recomputed), with the minimum (p0), p50, p75, p90, p95,
+p99, the maximum (p100), the mean and the number of samples. Percentiles are *nearest rank* over the
+probes that succeeded: a timeout is an error, counted by its class (name lookup, connection,
+handshake, timeout, 5xx, 4xx, assertion), never a very slow answer. The time of each probe is split
+into lookup, connection, handshake, wait and transfer.
+
+The key of the second witness is published later, by a reviewed pull request. Until it exists the
+verifier treats it as absent, not as wrong: everything else about the second witness's records is
+checked and the report says that their signatures were not, with a warning. A key file that exists
+and is wrong is a failure.
+
 ## What it proves, and what it does not
 
 | | It proves | It does not prove |
 | --- | --- | --- |
-| **Availability** | Every five minutes, from one place (Scaleway, Paris), each service's `/healthz` answered 200 with a well-formed, correctly identified body, within the latency budget, over a valid TLS certificate, or how it failed. Gaps in the record are visible as grey. | That every user could reach the service (one vantage point; regional and ISP problems are invisible). That features behind `/healthz` work (it touches no database, by design). Anything between two probes: an outage shorter than five minutes can be missed. That the transparency logs accept writes (only that their checkpoints are readable). |
+| **Availability** | Every five minutes, from two independent places (Scaleway in Paris and Oracle Cloud in São Paulo), each service's `/healthz` answered 200 with a well-formed, correctly identified body, within the latency budget, over a valid TLS certificate, or how it failed. A failure seen from one region only is shown as such. Gaps in the record are visible as grey. | That every user could reach the service (two vantage points are not every network; a problem of one provider or one country elsewhere can be invisible). That features behind `/healthz` work (it touches no database, by design). Anything between two probes: an outage shorter than five minutes can be missed. That the transparency logs accept writes (only that their checkpoints are readable). |
 | **Integrity** | The release each service says it runs was built by a pinned CI workflow, on a pinned branch of a pinned repository (by numeric id), from the commit it names: the release manifest is signed through Sigstore and an SLSA provenance attestation for the same digest was signed by the same identity. For static content (diagnos.health, the status page, the Workers' static assets) the bytes actually served were sampled and match the signed manifest. | That a Worker (vault, sign) runs the script it reports: the auditor cannot read Workers' code. That the source is free of bugs or backdoors. That the CI itself was not compromised (SLSA Build Level 2, not 3). That a static file changed between two samples was noticed at once: a full pass over the manifest takes from tens of minutes to many hours, depending on its size. |
 | **Confidentiality** | Which incidents diagnos has declared, against which services, with what severity and timeline. Each snapshot pins the Git blob of every incident file and is chained into the hourly timestamps, so a later edit or deletion of a declaration stays visible. | That nothing else happened. The auditor cannot detect a leak: a green row means *no incident declared*, nothing more. Declaring is a commitment diagnos makes in public; this record makes breaking it later visible, not impossible. |
 | **Witness** | Each transparency log only grew: every cosigned checkpoint extends the previous one, by an RFC 9162 consistency proof anyone can recompute, also from the log's own tiles. The log showed the witness one history (a second, conflicting checkpoint is published as a finding). Each hour an independent authority signed a hash covering the latest tree heads, the previous hour and the latest run record, so the past cannot be rewritten without breaking the chain. | What is in the logs: leaves are salted commitments, and this repository never holds a leaf, an entry or personal data. That diagnos logged everything it should: a witness sees the log, not the systems that write to it. |
@@ -133,6 +174,10 @@ stream says the auditor's network failed. `tools/verify cia` rejects a record in
 service failed while the control probe failed (it had to be recorded as a vantage failure) and a
 record whose `vantage` checks are inconsistent.
 
+The same goes for each witness on its own: a witness whose control probe failed measured nothing,
+and a witness that is silent is not measuring, which makes its region grey and the other region
+decide. Neither is ever counted as an outage.
+
 ## Feeds and subscriptions
 
 Every change event is published as a feed (the last 100 events of each), in RSS 2.0, Atom and JSON
@@ -198,7 +243,7 @@ you obtained elsewhere so the check does not rely on this repository.
 
 | Path | What it holds | Written by |
 | --- | --- | --- |
-| [`data/v1/cia/runs/YYYY/MM/DD/HHMMZ.json`](schemas/v1/cia-run.schema.json) | one five-minute run: per service and dimension, the level and every check with its code, chained to the previous run | auditor |
+| [`data/v1/cia/runs/YYYY/MM/DD/HHMMZ.json`](schemas/v1/cia-run.schema.json) | one five-minute run: per service and dimension, the level and every check with its code, chained to the previous run. `cia-run/v1` is the single-vantage record; [`cia-run/v2`](schemas/v1/cia-run-v2.schema.json) holds each witness's signed measurement and the combined result. Both live here, in one chain | auditor |
 | [`data/v1/cia/incidents/YYYY/MM/DD/HHMMZ.json`](schemas/v1/cia-incidents.schema.json) | a snapshot of the declared incidents, written when they change | auditor |
 | [`data/v1/cia/incidents/events/YYYY/MM/DD/<id>-<seq>.json`](schemas/v1/cia-incident-event.schema.json) | one change of an automatic incident: opened, updated or resolved | auditor |
 | [`data/v1/cia/releases/<service>/<digest>/`](schemas/v1/cia-release.schema.json) | the verdict on one release and the evidence it was judged on: manifest, Sigstore signature, provenance | auditor |
@@ -207,12 +252,13 @@ you obtained elsewhere so the check does not rely on this repository.
 | [`data/v1/sync.json`](schemas/v1/sync.schema.json) | how far the auditor's private journal has been mirrored here | auditor |
 | [`data/v1/<log>/witness/YYYY/MM/DD/HHMMSSZ.json`](schemas/v1/witness.schema.json) | one cosigned checkpoint and the consistency proof from the previous one | auditor |
 | [`data/v1/<log>/findings/YYYY/MM/DD/HHMMSSZ.json`](schemas/v1/finding.schema.json) | evidence of log misbehaviour (expected to stay empty) | auditor |
+| `data/v1/witnesses/latam/<log>/witness/…` and `…/findings/…` | the same two kinds of file for the second witness (Latin America), cosigned with its own key and chained on its own; the primary witness's files stay where they have always been | auditor |
 | [`data/v1/timestamps/YYYY/MM/DD/HHZ.json`](schemas/v1/timestamp.schema.json) | the hour's subject, its imprint and the token's details | auditor |
 | `data/v1/timestamps/YYYY/MM/DD/HHZ.tsr` | the RFC 3161 `TimeStampResp`, as the authority returned it (DER) | auditor |
 | [`data/v1/index/YYYY/MM.json`](schemas/v1/index.schema.json) | a light list of the month's witness records | auditor |
 | [`data/v1/latest.json`](schemas/v1/latest.schema.json), [`data/v1/state.json`](schemas/v1/state.schema.json) | the witness summary; the witness's own state | auditor |
 | [`incidents/`](incidents) | declared incidents, one Markdown file each, and the template (automatic incidents are never files here) | people, by pull request |
-| [`keys/`](keys) | public keys of the logs and the witness; CA chains of the time-stamping authorities; [`signers.json`](keys/signers.json), the CI identity each service's releases must be signed by | people, by pull request |
+| [`keys/`](keys) | public keys of the logs and of each witness (`witness/auditor.vkey`, and `witness/latam.vkey` once it is published); CA chains of the time-stamping authorities; [`signers.json`](keys/signers.json), the CI identity each service's releases must be signed by | people, by pull request |
 | [`schemas/v1/`](schemas/v1) | JSON Schema 2020-12 for every data file | people, by pull request |
 | [`tools/verify`](tools/verify) and the packages it uses | the standalone verifier | people |
 | [`tools/genexamples`](tools/genexamples), [`tools/ci`](tools/ci) | the example generator and the CI scripts | people |
@@ -227,14 +273,17 @@ their exact bytes, and `data.yml` rejects any change to one. Only the *views* ch
 `cia/incidents.json`, `cia/changes.json`, `cia/changes-recent.json` and `cia/days/**`. Each view is a pure function of the records, and
 `tools/verify cia` recomputes them all and compares, so a view cannot say anything the records do not.
 
-All data is UTF-8 JSON with two-space indentation and LF line endings (`.gitattributes` keeps it
-that way on every platform, which matters because records are pinned by their SHA-256). Times are
+All data is UTF-8 JSON with LF line endings (`.gitattributes` keeps it that way on every platform,
+which matters because records are pinned by their SHA-256). Records are indented by two spaces, so
+that people can read them on GitHub. Views are written on one line, because the servers that serve
+them do not compress and an indented array costs a line per number; readers parse either, and the
+verifier compares what a file says, not how it is laid out. Times are
 RFC 3339 UTC with seconds; tree hashes are base64 as in checkpoints; file digests are lowercase hex
 as `sha256sum` prints them.
 
 ## Keys and trust
 
-The keys in [`keys/`](keys) let anyone check the records. Checking a record against keys read from
+The keys in [`keys/`](keys) let anyone check the records, each witness's included. Checking a record against keys read from
 the same repository only shows that the repository is consistent with itself; for an independent
 check, compare them with the keys diagnos publishes elsewhere, or keep your own copy and pass it with
 `-keys`. [VERIFY.md](VERIFY.md#2-decide-which-keys-to-trust) lists where to look.

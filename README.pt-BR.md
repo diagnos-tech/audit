@@ -11,7 +11,8 @@ Este repositório é o registro público e independente da **confidencialidade, 
 disponibilidade** da diagnos. A cada cinco minutos o auditor da diagnos confere quatro serviços, lê
 os incidentes que a diagnos declarou, testemunha os logs de transparência da diagnos, publica o
 resultado num bucket público da Scaleway e **grava os mesmos arquivos aqui, em `develop`, a cada
-execução**. A cada hora, uma autoridade de carimbo de tempo externa (RFC 3161) data o registro
+execução**. Os serviços são medidos de duas regiões, Europa e América Latina, por duas testemunhas
+independentes. A cada hora, uma autoridade de carimbo de tempo externa (RFC 3161) data o registro
 inteiro.
 
 Pessoas mudam poucas coisas aqui: declaram incidentes por pull request e alteram os documentos, os
@@ -39,7 +40,7 @@ diagnos, no auditor nem na página.
 
 | Dimensão | O que se confere, a cada cinco minutos | Cor na página |
 | --- | --- | --- |
-| **Disponibilidade** | o `GET /healthz` de cada serviço responde 200 com um corpo bem formado, a tempo e com certificado TLS válido; os checkpoints dos logs de transparência estão legíveis | verde: respondeu normalmente · amarelo: lento, ou certificado perto de vencer · vermelho: sem resposta válida |
+| **Disponibilidade** | o `GET /healthz` de cada serviço responde 200 com um corpo bem formado, a tempo e com certificado TLS válido, da Europa e da América Latina; os checkpoints dos logs de transparência estão legíveis | verde: respondeu normalmente · amarelo: lento, certificado perto de vencer, ou alcançável de só uma região · vermelho: sem resposta válida |
 | **Integridade** | a versão que cada serviço diz rodar foi assinada pelo workflow de CI da diagnos (Sigstore), com proveniência SLSA, e os arquivos servidos batem com o manifesto assinado; também que os logs de transparência testemunhados só cresceram | verde: verificada · amarelo: não dá para confirmar (sem evidência, verificação pendente) · vermelho: evidência inválida ou bytes diferentes |
 | **Confidencialidade** | os incidentes que a diagnos declarou em [`incidents/`](incidents) e que afetam o serviço naquele momento; nada mais a colore | verde: nenhum declarado · amarelo: baixa ou média · vermelho: alta ou crítica |
 
@@ -50,11 +51,52 @@ serviços são `diagnos.health` (site e app), `vault.diagnos.health` (a API que 
 cifrados), `sign.diagnos.health` (assinatura de documentos) e `status.diagnos.health` (a própria
 página de status: estática, servida no GitHub Pages e na cópia da Scaleway).
 
+## Duas testemunhas, duas regiões
+
+Os serviços são medidos de dois lugares ao mesmo tempo, cada um por uma **testemunha** própria, com
+chave própria. Uma região na página é uma testemunha; a página nunca mostra o identificador de uma
+testemunha sem o nome dela.
+
+| Testemunha (id) | Região na página | Roda em | Chave |
+| --- | --- | --- | --- |
+| `europe` | Europa | Scaleway, Paris. É o único relógio e a única testemunha que publica: o registro de execução de cada intervalo é dela. | [`keys/witness/auditor.vkey`](keys/README.md) |
+| `latam` | América Latina | Oracle Cloud, São Paulo. Não tem relógio e não publica nada; quando é chamada, mede de onde está, assina o que mediu e responde. | [`keys/witness/latam.vkey`](keys/README.md) |
+
+Cada testemunha assina a própria medição, então um número da América Latina se confere com a chave
+da América Latina, e não com a palavra da diagnos. O registro de execução traz as duas medições
+assinadas e, ao lado delas, o resultado **combinado** de cada serviço, que o verificador recalcula a
+partir delas. A combinação segue quatro regras:
+
+- **Vermelho (fora do ar) só quando as testemunhas concordam.** As duas falham no mesmo intervalo,
+  ou só uma mediu e a nova tentativa dela confirma a falha.
+- **Amarelo, `regional`, quando uma falha e a outra não.** O serviço é alcançável de uma região e de
+  outra não; a página diz qual. Nunca é vermelho por si só.
+- **Testemunha em silêncio é neutra.** Se uma testemunha não respondeu, não foi verificada ou ficou
+  sem tempo, a medição dela é *não medida* (cinza) naquele intervalo e a outra decide sozinha.
+  Isso nunca é queda de serviço; depois de três execuções seguidas o fluxo de mudanças diz que
+  as medições daquela testemunha estão indisponíveis, e depois de duas boas, que voltaram.
+- **Evidência não é votação.** Um achado ou uma parada num log de transparência, visto por qualquer
+  das testemunhas, conta: mostrar a uma região uma árvore diferente da outra é exatamente o ataque
+  que uma segunda testemunha existe para pegar. Quando as duas leem raízes diferentes para o mesmo
+  tamanho de um log, o log assinou duas árvores e o registro precisa dizer isso.
+
+Para cada serviço e região, um arquivo de dia guarda a cor de cada intervalo e a latência de cada
+sondagem bem-sucedida (288 valores, para que qualquer percentil possa ser recalculado), com o mínimo
+(p0), p50, p75, p90, p95, p99, o máximo (p100), a média e o número de amostras. Os percentis são por
+*posto mais próximo* sobre as sondagens que deram certo: um tempo esgotado é um erro, contado pela
+classe (resolução de nome, conexão, handshake, tempo, 5xx, 4xx, asserção), nunca uma resposta muito
+lenta. O tempo de cada sondagem é dividido em resolução, conexão, handshake, espera e transferência.
+
+A chave da segunda testemunha é publicada depois, por pull request revisado. Enquanto ela não
+existe, o verificador a trata como ausente, não como errada: tudo o mais nos registros da segunda
+testemunha é conferido e o relatório diz, com um aviso, que as assinaturas deles não foram. Um
+arquivo de chave que existe e está errado é uma falha.
+
 ## O que prova e o que não prova
 
 | | Prova | Não prova |
 | --- | --- | --- |
-| **Disponibilidade** | A cada cinco minutos, de um só lugar (Scaleway, Paris), o `/healthz` de cada serviço respondeu 200 com um corpo bem formado e corretamente identificado, dentro do orçamento de latência, com certificado TLS válido, ou como falhou. Lacunas no registro aparecem em cinza. | Que todo usuário conseguiu acessar o serviço (um só ponto de observação; problemas regionais e de provedores não aparecem). Que as funções por trás do `/healthz` funcionam (ele não toca em banco de dados, por projeto). O que aconteceu entre duas sondagens: uma queda menor que cinco minutos pode passar. Que os logs de transparência aceitam escrita (só que os checkpoints estão legíveis). |
+| **Disponibilidade** | A cada cinco minutos, de dois lugares independentes (Scaleway em Paris e Oracle Cloud em São Paulo), o `/healthz` de cada serviço respondeu 200 com um corpo bem formado e corretamente identificado, dentro do orçamento de latência, com certificado TLS válido, ou como falhou. Uma falha vista de só uma região aparece como tal. Lacunas no registro aparecem em cinza. | Que todo usuário conseguiu acessar o serviço (dois pontos de observação não são todas as redes; um problema de um provedor ou de um país fora deles pode não aparecer). Que as funções por trás do `/healthz` funcionam (ele não toca em banco de dados, por projeto). O que aconteceu entre duas sondagens: uma queda menor que cinco minutos pode passar. Que os logs de transparência aceitam escrita (só que os checkpoints estão legíveis). |
 | **Integridade** | A versão que cada serviço diz rodar foi construída por um workflow de CI fixado, num branch fixado de um repositório fixado (pelo id numérico), a partir do commit que ela cita: o manifesto da versão está assinado via Sigstore e uma atestação de proveniência SLSA do mesmo digest foi assinada pela mesma identidade. Para conteúdo estático (diagnos.health, a página de status, os arquivos estáticos dos Workers) os bytes efetivamente servidos foram amostrados e batem com o manifesto assinado. | Que um Worker (vault, sign) roda o script que informa: o auditor não consegue ler o código dos Workers. Que o código-fonte não tem falhas ou portas dos fundos. Que a própria CI não foi comprometida (SLSA Build Nível 2, não 3). Que um arquivo estático alterado entre duas amostragens foi notado na hora: uma passada completa pelo manifesto leva de dezenas de minutos a muitas horas, conforme o tamanho dele. |
 | **Confidencialidade** | Quais incidentes a diagnos declarou, contra quais serviços, com que gravidade e linha do tempo. Cada snapshot fixa o blob Git de cada arquivo de incidente e entra na corrente dos carimbos horários, então uma edição ou remoção posterior de uma declaração continua visível. | Que nada mais aconteceu. O auditor não detecta vazamentos: uma linha verde quer dizer *nenhum incidente declarado*, nada além. Declarar é um compromisso que a diagnos assume em público; este registro torna visível, não impossível, quebrá-lo depois. |
 | **Testemunha** | Cada log de transparência só cresceu: todo checkpoint cossinado estende o anterior, por uma prova de consistência (RFC 9162) que qualquer pessoa recalcula, inclusive a partir dos tiles do próprio log. O log mostrou à testemunha uma só história (um segundo checkpoint conflitante vira um achado público). A cada hora uma autoridade independente assinou um hash que cobre o último estado das árvores, a hora anterior e o último registro de execução, então o passado não pode ser reescrito sem quebrar a corrente. | O que há nos logs: as folhas são compromissos com sal, e este repositório nunca guarda folha, entrada nem dado pessoal. Que a diagnos registrou tudo o que deveria: a testemunha vê o log, não os sistemas que escrevem nele. |
@@ -137,6 +179,10 @@ nenhum incidente é aberto, e o fluxo de mudanças diz que a rede do auditor fal
 controle falhava (ele devia ter sido gravado como falha de ponto de observação) e um registro cujas
 verificações `vantage` são incoerentes.
 
+O mesmo vale para cada testemunha em separado: uma testemunha cuja sonda de controle falhou não
+mediu nada, e uma testemunha em silêncio não está medindo, o que deixa a região dela cinza e faz a
+outra decidir. Nenhuma das duas conta como queda.
+
 ## Feeds e assinaturas
 
 Cada evento de mudança é publicado em feeds (os últimos 100 eventos de cada), em RSS 2.0, Atom e JSON
@@ -203,7 +249,7 @@ por outro caminho, para que a conferência não dependa deste repositório.
 
 | Caminho | O que guarda | Quem escreve |
 | --- | --- | --- |
-| [`data/v1/cia/runs/AAAA/MM/DD/HHMMZ.json`](schemas/v1/cia-run.schema.json) | uma execução de cinco minutos: por serviço e dimensão, o nível e cada verificação com seu código, encadeada à execução anterior | auditor |
+| [`data/v1/cia/runs/AAAA/MM/DD/HHMMZ.json`](schemas/v1/cia-run.schema.json) | uma execução de cinco minutos: por serviço e dimensão, o nível e cada verificação com seu código, encadeada à execução anterior. O `cia-run/v1` é o registro de um só ponto de observação; o [`cia-run/v2`](schemas/v1/cia-run-v2.schema.json) traz a medição assinada de cada testemunha e o resultado combinado. Os dois ficam aqui, numa só corrente | auditor |
 | [`data/v1/cia/incidents/AAAA/MM/DD/HHMMZ.json`](schemas/v1/cia-incidents.schema.json) | um snapshot dos incidentes declarados, gravado quando eles mudam | auditor |
 | [`data/v1/cia/incidents/events/AAAA/MM/DD/<id>-<seq>.json`](schemas/v1/cia-incident-event.schema.json) | uma mudança de um incidente automático: aberto, atualizado ou resolvido | auditor |
 | [`data/v1/cia/releases/<serviço>/<digest>/`](schemas/v1/cia-release.schema.json) | o veredito sobre uma versão e a evidência em que ele se baseou: manifesto, assinatura Sigstore, proveniência | auditor |
@@ -212,12 +258,13 @@ por outro caminho, para que a conferência não dependa deste repositório.
 | [`data/v1/sync.json`](schemas/v1/sync.schema.json) | até onde o diário privado do auditor já foi espelhado aqui | auditor |
 | [`data/v1/<log>/witness/AAAA/MM/DD/HHMMSSZ.json`](schemas/v1/witness.schema.json) | um checkpoint cossinado e a prova de consistência desde o anterior | auditor |
 | [`data/v1/<log>/findings/AAAA/MM/DD/HHMMSSZ.json`](schemas/v1/finding.schema.json) | evidência de mau comportamento do log (deve ficar vazio) | auditor |
+| `data/v1/witnesses/latam/<log>/witness/…` e `…/findings/…` | os mesmos dois tipos de arquivo da segunda testemunha (América Latina), cossinados com a chave dela e encadeados por ela; os arquivos da testemunha primária continuam onde sempre estiveram | auditor |
 | [`data/v1/timestamps/AAAA/MM/DD/HHZ.json`](schemas/v1/timestamp.schema.json) | o assunto da hora, o imprint e os dados do token | auditor |
 | `data/v1/timestamps/AAAA/MM/DD/HHZ.tsr` | o `TimeStampResp` RFC 3161 como a autoridade respondeu (DER) | auditor |
 | [`data/v1/index/AAAA/MM.json`](schemas/v1/index.schema.json) | lista leve dos registros de testemunha do mês | auditor |
 | [`data/v1/latest.json`](schemas/v1/latest.schema.json), [`data/v1/state.json`](schemas/v1/state.schema.json) | o resumo da testemunha; o estado da própria testemunha | auditor |
 | [`incidents/`](incidents) | incidentes declarados, um arquivo Markdown cada, e o modelo (incidentes automáticos nunca são arquivos aqui) | pessoas, por pull request |
-| [`keys/`](keys) | chaves públicas dos logs e da testemunha; cadeias das autoridades de carimbo; [`signers.json`](keys/signers.json), a identidade de CI que deve assinar as versões de cada serviço | pessoas, por pull request |
+| [`keys/`](keys) | chaves públicas dos logs e de cada testemunha (`witness/auditor.vkey`, e `witness/latam.vkey` quando for publicada); cadeias das autoridades de carimbo; [`signers.json`](keys/signers.json), a identidade de CI que deve assinar as versões de cada serviço | pessoas, por pull request |
 | [`schemas/v1/`](schemas/v1) | JSON Schema 2020-12 de cada arquivo de dados | pessoas, por pull request |
 | [`tools/verify`](tools/verify) e os pacotes que ele usa | o verificador independente | pessoas |
 | [`tools/genexamples`](tools/genexamples), [`tools/ci`](tools/ci) | o gerador de exemplos e os scripts de CI | pessoas |
@@ -233,14 +280,17 @@ Só as *visões* mudam: `latest.json`, `state.json`, `index/**`, `sync.json` e `
 registros, e `tools/verify cia` recalcula todas e compara, então uma visão não pode dizer nada que
 os registros não digam.
 
-Todos os dados são JSON UTF-8 com indentação de dois espaços e fim de linha LF (o `.gitattributes`
-garante isso em qualquer sistema, o que importa porque os registros são fixados pelo SHA-256). Datas
+Todos os dados são JSON UTF-8 com fim de linha LF (o `.gitattributes` garante isso em qualquer
+sistema, o que importa porque os registros são fixados pelo SHA-256). Os registros têm indentação de
+dois espaços, para que as pessoas leiam no GitHub. As visões são escritas numa só linha, porque os
+servidores que as entregam não comprimem e um vetor indentado custa uma linha por número; os leitores
+aceitam as duas formas, e o verificador compara o que o arquivo diz, não como ele está diagramado. Datas
 em RFC 3339 UTC com segundos; hashes de árvore em base64, como nos checkpoints; hashes de arquivo em
 hex minúsculo, como o `sha256sum` imprime.
 
 ## Chaves e confiança
 
-As chaves em [`keys/`](keys) permitem conferir os registros. Conferir um registro com chaves lidas
+As chaves em [`keys/`](keys) permitem conferir os registros, os de cada testemunha inclusive. Conferir um registro com chaves lidas
 do próprio repositório só mostra que o repositório é coerente consigo mesmo; para uma conferência
 independente, compare-as com as chaves que a diagnos publica em outros lugares, ou guarde sua cópia e
 passe-a com `-keys`. O [VERIFY.md](VERIFY.md#2-decide-which-keys-to-trust) diz onde procurar.
