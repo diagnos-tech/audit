@@ -145,10 +145,14 @@ jobs:
           witness=() timestamps=() findings=() cia=() releases=()
           for f in "${files[@]}"; do
             case "$f" in
+              # Both witnesses: the primary's records are data/v1/<log>/witness/..., the others' are
+              # data/v1/witnesses/<witness>/<log>/witness/... (the first * of the glob spans the
+              # extra directories). The verifier finds the witness's key from the path.
               data/v1/*/witness/*.json) witness+=("$f") ;;
               data/v1/timestamps/*.json) timestamps+=("$f") ;;
               data/v1/*/findings/*.json) findings+=("$f") ;;
-              # Run records, incident snapshots and events, and the views derived from them.
+              # Run records (cia-run/v1 and cia-run/v2 alike: the verifier reads the version from the
+              # file), incident snapshots and events, and the views derived from them.
               data/v1/cia/runs/*.json | data/v1/cia/incidents/*.json | data/v1/cia/days/*.json) cia+=("$f") ;;
               data/v1/cia/summary.json | data/v1/cia/latest.json | data/v1/cia/incidents.json | data/v1/cia/changes.json | data/v1/cia/changes-recent.json) cia+=("$f") ;;
               # Archived release evidence: one directory per release digest.

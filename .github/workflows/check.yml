@@ -21,7 +21,7 @@ jobs:
   tools:
     name: Tools, schemas and examples
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,13 +38,39 @@ jobs:
           if [ -n "$unformatted" ]; then echo "::error::not gofmt-ed: $unformatted"; exit 1; fi
           go vet ./tools/...
 
-      # Includes: the committed examples equal what the generator writes, every kind of tampering is
-      # caught, consistency rebuilt from tiles, and vectors cross-checked with transparency-dev.
-      - name: go test
-        run: go test ./tools/...
+      # Pinned, like every tool here. staticcheck 2026.1 is built with Go 1.25, so this step uses it.
+      - name: staticcheck
+        env:
+          GOTOOLCHAIN: go1.25.5
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
+          "$(go env GOPATH)/bin/staticcheck" ./tools/...
 
+      # Includes: the committed examples equal what the generator writes, every kind of tampering is
+      # caught (a changed measurement, a combined verdict, a split view, a witness whose key is not
+      # published yet), consistency rebuilt from tiles, and vectors cross-checked with
+      # transparency-dev.
+      - name: go test
+        run: go test -race ./tools/...
+
+      # The parsers and the signature checks: every seed case runs in go test above; here they also
+      # get a few seconds of mutation each; a failing input is printed in the log.
+      - name: Fuzz the parsers and the signature checks
+        run: |
+          set -euo pipefail
+          go test ./tools/internal/record -run '^$' -fuzz '^FuzzDecodeRun$' -fuzztime 15s
+          go test ./tools/internal/check -run '^$' -fuzz '^FuzzParseMeasurement$' -fuzztime 15s
+          go test ./tools/internal/check -run '^$' -fuzz '^FuzzOpenMeasurement$' -fuzztime 15s
+          go test ./tools/internal/check -run '^$' -fuzz '^FuzzCheckRunRecord$' -fuzztime 15s
+
+      # Both versions of the run record live in the same directory and the same chain; each is
+      # validated against the schema its own "schema" field names.
       - name: Examples match the schemas
-        run: tools/ci/validate-json.sh -root examples
+        run: |
+          set -euo pipefail
+          tools/ci/validate-json.sh -root examples | tee "$RUNNER_TEMP/validated.txt"
+          grep -q 'cia-run file(s) against schemas/v1/cia-run.schema.json' "$RUNNER_TEMP/validated.txt"
+          grep -q 'cia-run-v2 file(s) against schemas/v1/cia-run-v2.schema.json' "$RUNNER_TEMP/validated.txt"
 
       - name: Examples verify, tokens included
         run: go run ./tools/verify all -root examples -openssl -q
