@@ -26,7 +26,7 @@
           "integrity": { "$ref": "defs.schema.json#/$defs/dayLetters" },
           "confidentiality": { "$ref": "defs.schema.json#/$defs/dayLetters" },
           "latency": {
-            "description": "How long the service's /healthz took over the day: the 50th and 95th percentile (nearest rank: the value at position ceil(p * n / 100) of the n sorted values) of latencyMs of its healthz check in the day's run records, over the runs where that is not null; samples is n. Both percentiles are null when samples is 0. Optional: day files written before it existed do not have it.",
+            "description": "How long the service's /healthz took over the day: the 50th and 95th percentile (nearest rank: the value at position ceil(p * n / 100) of the n sorted values) of latencyMs of its healthz check in the day's run records, over the runs where that is not null; samples is n. Both percentiles are null when samples is 0. Optional: day files written before it existed do not have it. With two witnesses it is the europe witness's latency, identical to regions.europe.latency without the added statistics.",
             "type": "object",
             "additionalProperties": false,
             "required": ["p50Ms", "p95Ms", "samples"],
@@ -40,6 +40,43 @@
                 "minItems": 288,
                 "maxItems": 288,
                 "items": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0, "maximum": 600000 }] }
+              }
+            }
+          },
+          "regions": {
+            "description": "Per witness, the day as that witness saw it. A witness has a region when any run of the day names it. For a cia-run/v1 record, which has one vantage point, the europe region is derived from its healthz check (the class from the code and the status; waitMs and transferMs from firstByteMs, which counts from the start of the attempt) and any other witness is not measured (-). Optional for a day with only cia-run/v1 records, which may predate it; a day with a cia-run/v2 record has it, and every region is derived again from the run records, so it cannot say anything they do not.",
+            "type": "object",
+            "propertyNames": { "$ref": "defs.schema.json#/$defs/witnessId" },
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["availability", "latency", "phases", "errors", "retries", "uptime"],
+              "properties": {
+                "availability": {
+                  "$ref": "defs.schema.json#/$defs/dayLetters",
+                  "description": "The level of the witness's probe in each slot: o, w, f, or - when the slot has no record or the witness did not measure (unavailable, vantage, challenged)."
+                },
+                "latency": { "$ref": "defs.schema.json#/$defs/latencyStats" },
+                "phases": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["dnsMs", "connectMs", "tlsMs", "waitMs", "transferMs"],
+                  "properties": {
+                    "dnsMs": { "$ref": "defs.schema.json#/$defs/phaseStats" },
+                    "connectMs": { "$ref": "defs.schema.json#/$defs/phaseStats" },
+                    "tlsMs": { "$ref": "defs.schema.json#/$defs/phaseStats" },
+                    "waitMs": { "$ref": "defs.schema.json#/$defs/phaseStats" },
+                    "transferMs": { "$ref": "defs.schema.json#/$defs/phaseStats" }
+                  }
+                },
+                "errors": { "$ref": "defs.schema.json#/$defs/errorCounts" },
+                "retries": {
+                  "description": "Slots whose probe needed two attempts.",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 288
+                },
+                "uptime": { "$ref": "defs.schema.json#/$defs/uptime" }
               }
             }
           }

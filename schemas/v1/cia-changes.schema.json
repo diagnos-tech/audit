@@ -22,17 +22,17 @@
       "required": ["id", "at", "since", "kind", "services", "categories", "dimension", "from", "to", "summary", "links"],
       "properties": {
         "id": {
-          "description": "Stable and unique. A level, release, finding or record event: <at as YYYYMMDDHHMM>-<service or record>-<dimension or the kind>-<kind>, for example 202610010320-vault-availability-level or 202610010500-record-delayed. An event of an automatic incident: the file stem of its event fact (<incident id>-<seq>). An event of a declared incident: <incident id>-<snapshot slot as YYYYMMDDHHMM>.",
+          "description": "Stable and unique. A level, release, finding or record event: <at as YYYYMMDDHHMM>-<service or record>-<dimension or the kind>-<kind>, for example 202610010320-vault-availability-level or 202610010500-record-delayed. An event about a witness: <at as YYYYMMDDHHMM>-witness-<witness>-unavailable, -restored or -disagreement (an answer that did not verify, or a peer check that found the published history changed), or <at>-log-<log>-disagreement for a log of which two witnesses read different trees of one size; these name the record, never the services. An event of an automatic incident: the file stem of its event fact (<incident id>-<seq>). An event of a declared incident: <incident id>-<snapshot slot as YYYYMMDDHHMM>.",
           "type": "string",
           "pattern": "^[0-9a-z][0-9a-z-]{5,150}$"
         },
         "at": { "description": "The slot of the run that wrote or detected the event. For incident events written by the auditor, at of the event fact; for declared incidents, the slot of the snapshot that changed.", "$ref": "defs.schema.json#/$defs/slot" },
         "since": { "description": "The slot the new state began: the first slot of the debounce window for a level change; at for every other kind.", "$ref": "defs.schema.json#/$defs/slot" },
         "kind": {
-          "enum": ["level-changed", "release-verified", "finding", "incident-opened", "incident-updated", "incident-resolved", "incident-removed", "record-delayed", "record-resumed", "vantage"]
+          "enum": ["level-changed", "release-verified", "finding", "incident-opened", "incident-updated", "incident-resolved", "incident-removed", "record-delayed", "record-resumed", "vantage", "witness-unavailable", "witness-restored", "witness-disagreement"]
         },
         "services": {
-          "description": "The services the event is about; empty for record-delayed, record-resumed and vantage.",
+          "description": "The services the event is about; empty for record-delayed, record-resumed, vantage and the witness events.",
           "type": "array",
           "uniqueItems": true,
           "items": { "$ref": "defs.schema.json#/$defs/serviceId" }

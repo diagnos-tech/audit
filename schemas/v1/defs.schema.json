@@ -5,9 +5,10 @@
   "description": "Building blocks reused by every v1 data file. Encodings follow the C2SP specs for tree hashes (base64) and sha256sum for file digests (lowercase hex).",
   "$defs": {
     "logName": {
-      "description": "Short name of a transparency log, as used in paths (data/v1/<log>/...).",
+      "description": "Short name of a transparency log, as used in paths (data/v1/<log>/...). The names cia, index, timestamps and witnesses are reserved.",
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]{0,30}$"
+      "pattern": "^[a-z][a-z0-9-]{0,30}$",
+      "not": { "enum": ["cia", "index", "timestamps", "witnesses"] }
     },
     "origin": {
       "description": "Checkpoint origin line (C2SP tlog-checkpoint), e.g. transparency.diagnos.health/audit/v1.",
@@ -78,14 +79,14 @@
       "pattern": "^[a-z][a-z0-9-]{0,30}$"
     },
     "witnessPath": {
-      "description": "Repository path of a witness record; the file name is the UTC time of the cosignature.",
+      "description": "Repository path of a witness record; the file name is the UTC time of the cosignature. The primary witness's records are under data/v1/<log>/witness/; every other witness's are under data/v1/witnesses/<witness>/<log>/witness/.",
       "type": "string",
-      "pattern": "^data/v1/[a-z][a-z0-9-]{0,30}/witness/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{6}Z\\.json$"
+      "pattern": "^data/v1/(witnesses/[a-z][a-z0-9-]{1,15}/)?[a-z][a-z0-9-]{0,30}/witness/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{6}Z\\.json$"
     },
     "findingPath": {
-      "description": "Repository path of a finding record.",
+      "description": "Repository path of a finding record, under the same namespace as the witness that found it.",
       "type": "string",
-      "pattern": "^data/v1/[a-z][a-z0-9-]{0,30}/findings/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{6}Z\\.json$"
+      "pattern": "^data/v1/(witnesses/[a-z][a-z0-9-]{1,15}/)?[a-z][a-z0-9-]{0,30}/findings/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{6}Z\\.json$"
     },
     "timestampPath": {
       "description": "Repository path of an hourly timestamp record.",
@@ -287,6 +288,285 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 280
+    },
+    "witnessId": {
+      "description": "A witness, named after the region it measures from: europe (the primary witness, in Paris) or latam (the secondary witness, in Sao Paulo). People see Europe / Europa and Latin America / America Latina.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,15}$"
+    },
+    "vantage": {
+      "description": "Where a witness ran, as provider:region (scaleway:fr-par, oci:sa-saopaulo-1).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*:[a-z0-9][a-z0-9-]*$"
+    },
+    "milliseconds": { "type": "integer", "minimum": 0, "maximum": 600000 },
+    "errorClass": {
+      "description": "The phase in which an attempt failed, first that applies: dns (name resolution), connect (TCP), tls (handshake or certificate), timeout (connected, but the response or its body did not arrive before the attempt's deadline), http-5xx and http-4xx (the status), assertion (a complete response that broke a rule of the check: another status, media type, body, service or environment).",
+      "enum": ["dns", "connect", "tls", "timeout", "http-5xx", "http-4xx", "assertion"]
+    },
+    "probeTimings": {
+      "description": "Where the time of the deciding attempt went, in whole milliseconds measured on a monotonic clock. The phases do not overlap: dnsMs resolves the name, connectMs opens the TCP connection, tlsMs is the TLS handshake, waitMs runs from the request written to the first byte of the response, transferMs from that byte to the end of the body. A phase that did not happen or did not finish is null. totalMs is the whole attempt, from its start to the end of the body or to the failure, and is at least the sum of the phases. Time to first byte is totalMs minus transferMs.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dnsMs", "connectMs", "tlsMs", "waitMs", "transferMs", "totalMs"],
+      "properties": {
+        "dnsMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "connectMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "tlsMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "waitMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "transferMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "totalMs": { "$ref": "defs.schema.json#/$defs/milliseconds" }
+      }
+    },
+    "probe": {
+      "description": "One witness's GET <url>healthz of one service in one run, on a fresh IPv4 connection (no reuse, no proxy, no redirect followed), with one retry 2 s later after a timeout, a connection error or HTTP 5xx/429. The fields describe the attempt that decided the result.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "class",
+        "attempts",
+        "retriedAfter",
+        "httpStatus",
+        "httpVersion",
+        "tlsVersion",
+        "tlsNotAfter",
+        "tlsIssuer",
+        "ip",
+        "edge",
+        "bytes",
+        "timings",
+        "error"
+      ],
+      "properties": {
+        "code": {
+          "description": "The result, with the level of the check table (ok, retried: ok; slow, tls-expiring: warn; challenged, vantage: none; the rest: fail).",
+          "enum": [
+            "ok",
+            "retried",
+            "slow",
+            "tls-expiring",
+            "timeout",
+            "connect-error",
+            "tls-error",
+            "http-status",
+            "content-type",
+            "invalid-body",
+            "wrong-service",
+            "wrong-environment",
+            "challenged",
+            "vantage"
+          ]
+        },
+        "class": {
+          "description": "The error class of the deciding attempt; null when it succeeded, and for challenged and vantage.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/errorClass" }]
+        },
+        "attempts": { "type": "integer", "minimum": 1, "maximum": 2 },
+        "retriedAfter": {
+          "description": "With two attempts, the error class of the first one; else null.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/errorClass" }]
+        },
+        "httpStatus": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 100, "maximum": 599 }] },
+        "httpVersion": { "oneOf": [{ "type": "null" }, { "enum": ["1.1", "2"] }] },
+        "tlsVersion": { "oneOf": [{ "type": "null" }, { "enum": ["1.2", "1.3"] }] },
+        "tlsNotAfter": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }] },
+        "tlsIssuer": {
+          "description": "The common name, or else the organization, of the issuer of the leaf certificate.",
+          "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1, "maxLength": 64 }]
+        },
+        "ip": {
+          "description": "The address the connection was made to. Probes dial IPv4 only.",
+          "oneOf": [{ "type": "null" }, { "type": "string", "format": "ipv4" }]
+        },
+        "edge": {
+          "description": "The IATA code of the CDN location that answered, as named by the CDN in its response headers; null when the response names none.",
+          "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^[A-Z]{3}$" }]
+        },
+        "bytes": {
+          "description": "Size of the response body that was read.",
+          "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0, "maximum": 65537 }]
+        },
+        "timings": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/probeTimings" }] },
+        "error": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/shortText" }] }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "code": { "enum": ["timeout", "connect-error", "tls-error", "http-status", "content-type", "invalid-body", "wrong-service", "wrong-environment"] } }
+          },
+          "then": {
+            "properties": { "class": { "type": "string" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "code": { "not": { "enum": ["timeout", "connect-error", "tls-error", "http-status", "content-type", "invalid-body", "wrong-service", "wrong-environment"] } } }
+          },
+          "then": {
+            "properties": { "class": { "type": "null" } }
+          }
+        }
+      ]
+    },
+    "witnessControl": {
+      "description": "The witness's control probe: a request to a host outside diagnos. When it failed and every probe of this witness failed at the transport level, the witness's own network failed: its probes and log checks carry the code vantage (not measured).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "ok", "httpStatus", "latencyMs"],
+      "properties": {
+        "host": { "type": "string", "pattern": "^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$" },
+        "ok": { "type": "boolean" },
+        "httpStatus": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 100, "maximum": 599 }] },
+        "latencyMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] }
+      }
+    },
+    "witnessLog": {
+      "description": "What one witness did with one transparency log in this run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "status", "size", "root", "record", "finding", "error"],
+      "properties": {
+        "code": {
+          "description": "Level as in the check table: ok ok; log-error warn; finding, halted fail; unreachable, vantage none.",
+          "enum": ["ok", "finding", "halted", "log-error", "unreachable", "vantage"]
+        },
+        "status": { "enum": ["unchanged", "empty", "witnessed", "finding", "halted", "error"] },
+        "size": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/treeSize" }] },
+        "root": {
+          "description": "The root of the checkpoint the witness read in this run; null when it read none (or the log is halted).",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/treeHash" }]
+        },
+        "record": {
+          "description": "The witness's latest witness record of this log.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/witnessPath" }]
+        },
+        "finding": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/findingPath" }] },
+        "error": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/shortText" }] }
+      }
+    },
+    "witnessPeer": {
+      "description": "The secondary witness's check of the latest run record the primary published, read before measuring: ok (the europe section's signature verifies and the record links the record this witness checked before), gap (it verifies, but the record it checked before is not the previous one, so the link was not checked), mismatch (a signature fails, or the link does not match: the published history changed), unavailable (it could not be read). record and sha256 name the run record it read and the SHA-256 of the bytes it read; they are null only for unavailable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record", "sha256", "verdict"],
+      "properties": {
+        "record": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/ciaRunPath" }] },
+        "sha256": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/sha256" }] },
+        "verdict": { "enum": ["ok", "gap", "mismatch", "unavailable"] }
+      }
+    },
+    "witnessMeasured": {
+      "description": "Everything one witness measured in one run. Signed by the witness: see witnessEntry.note.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["witness", "vantage", "slot", "startedAt", "finishedAt", "control", "probes", "logs", "peer"],
+      "properties": {
+        "witness": { "$ref": "defs.schema.json#/$defs/witnessId" },
+        "vantage": { "$ref": "defs.schema.json#/$defs/vantage" },
+        "slot": { "$ref": "defs.schema.json#/$defs/slot" },
+        "startedAt": { "$ref": "defs.schema.json#/$defs/time" },
+        "finishedAt": { "$ref": "defs.schema.json#/$defs/time" },
+        "control": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/witnessControl" }] },
+        "probes": { "type": "object", "propertyNames": { "$ref": "defs.schema.json#/$defs/serviceId" }, "additionalProperties": { "$ref": "defs.schema.json#/$defs/probe" } },
+        "logs": { "type": "object", "propertyNames": { "$ref": "defs.schema.json#/$defs/logName" }, "additionalProperties": { "$ref": "defs.schema.json#/$defs/witnessLog" } },
+        "peer": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/witnessPeer" }] }
+      }
+    },
+    "witnessEntry": {
+      "description": "One witness in one run: its signed measurement, or why it is missing. A missing witness is not measured (grey), never an outage.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason", "note", "measured"],
+      "properties": {
+        "status": { "enum": ["ok", "unavailable"] },
+        "reason": {
+          "description": "Why the measurement is missing: timeout (no answer in time, after one retry), unreachable (no connection), rejected (the witness refused the request), signature (the answer did not verify), invalid (the answer broke the contract), skew (its clock was more than 60 s off), off (not configured). null when status is ok.",
+          "oneOf": [{ "type": "null" }, { "enum": ["timeout", "unreachable", "rejected", "signature", "invalid", "skew", "off"] }]
+        },
+        "note": {
+          "description": "The witness's signed note over this measurement. Its text is five lines: 'diagnos-witness/measurement/v1', 'witness <id>', 'slot <slot>', 'request <SHA-256 of the request note that asked for it, or none>', 'measured <SHA-256 of the RFC 8785 canonical JSON of measured>'. The key is the witness's key in keys/witness/ (the Ed25519 public key of its cosignature key, as a signed-note key).",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/signedNote" }]
+        },
+        "measured": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/witnessMeasured" }] }
+      },
+      "if": {
+        "properties": { "status": { "const": "ok" } }
+      },
+      "then": {
+        "properties": {
+          "reason": { "type": "null" },
+          "note": { "$ref": "defs.schema.json#/$defs/signedNote" },
+          "measured": { "$ref": "defs.schema.json#/$defs/witnessMeasured" }
+        }
+      },
+      "else": {
+        "properties": {
+          "reason": { "type": "string" },
+          "note": { "type": "null" },
+          "measured": { "type": "null" }
+        }
+      }
+    },
+    "latencyStats": {
+      "description": "Latency of the successful probes of one witness over one day. Percentiles are nearest rank (the value at position ceil(p * n / 100) of the n sorted values; minMs is p0 and maxMs p100), meanMs is the mean rounded half up; all null when samples is 0. Failed probes, including timeouts, are not latency samples: they are counted in errors.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["samples", "minMs", "p50Ms", "p75Ms", "p90Ms", "p95Ms", "p99Ms", "maxMs", "meanMs", "slotsMs"],
+      "properties": {
+        "samples": { "type": "integer", "minimum": 0, "maximum": 288 },
+        "minMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "p50Ms": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "p75Ms": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "p90Ms": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "p95Ms": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "p99Ms": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "maxMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "meanMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "slotsMs": {
+          "description": "totalMs of the witness's probe in slot i when it succeeded (ok, retried, slow, tls-expiring), else null. Exactly 288 entries.",
+          "type": "array",
+          "minItems": 288,
+          "maxItems": 288,
+          "items": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] }
+        }
+      }
+    },
+    "phaseStats": {
+      "description": "One timing phase over the day's successful probes where it was measured: mean (rounded half up) and nearest-rank percentiles.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["meanMs", "p50Ms", "p95Ms"],
+      "properties": {
+        "meanMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "p50Ms": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+        "p95Ms": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] }
+      }
+    },
+    "errorCounts": {
+      "description": "Slots of the day whose probe failed, by the error class of the deciding attempt.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dns", "connect", "tls", "timeout", "http-5xx", "http-4xx", "assertion"],
+      "properties": {
+        "dns": { "type": "integer", "minimum": 0, "maximum": 288 },
+        "connect": { "type": "integer", "minimum": 0, "maximum": 288 },
+        "tls": { "type": "integer", "minimum": 0, "maximum": 288 },
+        "timeout": { "type": "integer", "minimum": 0, "maximum": 288 },
+        "http-5xx": { "type": "integer", "minimum": 0, "maximum": 288 },
+        "http-4xx": { "type": "integer", "minimum": 0, "maximum": 288 },
+        "assertion": { "type": "integer", "minimum": 0, "maximum": 288 }
+      }
+    },
+    "uptime": {
+      "description": "Slots at ok or warn, and slots at ok, warn or fail.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["up", "measured"],
+      "properties": {
+        "up": { "type": "integer", "minimum": 0 },
+        "measured": { "type": "integer", "minimum": 0 }
+      }
     }
   }
 }

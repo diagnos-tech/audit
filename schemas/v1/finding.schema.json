@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://diagnos-tech.github.io/audit/schemas/v1/finding.schema.json",
   "title": "Finding",
-  "description": "Evidence that a log misbehaved: a checkpoint signed by the log that conflicts with a tree head the witness already cosigned. Stored at data/v1/<log>/findings/YYYY/MM/DD/HHMMSSZ.json and never rewritten. The witness stops cosigning the log after a finding.",
+  "description": "Evidence that a log misbehaved: a checkpoint signed by the log that conflicts with a tree head the witness already cosigned. Stored at data/v1/<log>/findings/YYYY/MM/DD/HHMMSSZ.json (data/v1/witnesses/<witness>/<log>/findings/... for a witness other than the primary) and never rewritten. The witness stops cosigning the log after a finding.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "log", "origin", "detectedAt", "kind", "summary", "witnessed", "observed", "consistency"],

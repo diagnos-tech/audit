@@ -42,6 +42,22 @@
               "up": { "type": "integer", "minimum": 0 },
               "measured": { "type": "integer", "minimum": 0 }
             }
+          },
+          "regions": {
+            "description": "Per witness, oldest day first: the day letter of its availability (rule of the availability series), uptime over the window, and the day's p50Ms and p95Ms copied from regions.<id>.latency of the day file (null without samples). Optional.",
+            "type": "object",
+            "propertyNames": { "$ref": "defs.schema.json#/$defs/witnessId" },
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["days", "uptime", "p50Ms", "p95Ms"],
+              "properties": {
+                "days": { "$ref": "defs.schema.json#/$defs/windowLetters" },
+                "uptime": { "$ref": "defs.schema.json#/$defs/uptime" },
+                "p50Ms": { "type": "array", "minItems": 90, "maxItems": 90, "items": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] } },
+                "p95Ms": { "type": "array", "minItems": 90, "maxItems": 90, "items": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] } }
+              }
+            }
           }
         }
       }

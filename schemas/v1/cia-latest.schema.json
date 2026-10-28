@@ -44,7 +44,23 @@
               "code": { "$ref": "defs.schema.json#/$defs/checkCode" },
               "since": { "$ref": "#/$defs/since" },
               "latencyMs": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0 }] },
-              "incidents": { "$ref": "#/$defs/openIncidents" }
+              "incidents": { "$ref": "#/$defs/openIncidents" },
+              "regions": {
+                "description": "Per witness, its probe in the latest run: level and code, latencyMs (totalMs when it succeeded, else null) and since (the earliest run of the unbroken sequence, ending at the latest one, in which the witness's own probe had this level; a run that does not name the witness breaks it). A witness that is named but measured nothing has level none and code vantage. Present when the latest run is a cia-run/v2 record.",
+                "type": "object",
+                "propertyNames": { "$ref": "defs.schema.json#/$defs/witnessId" },
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["level", "code", "latencyMs", "since"],
+                  "properties": {
+                    "level": { "$ref": "defs.schema.json#/$defs/level" },
+                    "code": { "$ref": "defs.schema.json#/$defs/checkCode" },
+                    "latencyMs": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/milliseconds" }] },
+                    "since": { "$ref": "#/$defs/since" }
+                  }
+                }
+              }
             }
           },
           "integrity": {
@@ -88,6 +104,22 @@
           "items": { "$ref": "defs.schema.json#/$defs/incidentId" }
         },
         "snapshot": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/ciaIncidentsPath" }] }
+      }
+    },
+    "witnesses": {
+      "description": "Per witness: whether it measured in the latest run (status ok) or not (unavailable, with the reason), the vantage it measured from (null when it did not), and since when (slot of the earliest run of the unbroken sequence with this status). A witness that is off is not named. Present when the latest run is a cia-run/v2 record.",
+      "type": "object",
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/witnessId" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "reason", "vantage", "since"],
+        "properties": {
+          "status": { "enum": ["ok", "unavailable"] },
+          "reason": { "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^[a-z][a-z-]{1,15}$" }] },
+          "vantage": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/vantage" }] },
+          "since": { "$ref": "defs.schema.json#/$defs/slot" }
+        }
       }
     }
   },

@@ -134,7 +134,7 @@
         },
         "tlsNotAfter": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }] },
         "timings": {
-          "description": "Where the time of the deciding attempt went, in whole milliseconds, from the HTTP client's own trace. dnsMs is name resolution, connectMs the TCP connection, tlsMs the TLS handshake and firstByteMs the wait from the request sent to the first byte of the response; a phase that did not happen (a reused or literal address, no TLS) or did not finish is null. totalMs is the whole attempt, from sending the request to the end of the body or to the failure; when latencyMs is not null it equals it. Optional: records written before it existed do not have it.",
+          "description": "Where the time of the deciding attempt went, in whole milliseconds, from the HTTP client's own trace. dnsMs is name resolution, connectMs the TCP connection, tlsMs the TLS handshake and firstByteMs the time from the start of the attempt to the first byte of the response, so it includes the three phases before it; a phase that did not happen (a reused or literal address, no TLS) or did not finish is null. totalMs is the whole attempt, from its start to the end of the body or to the failure; when latencyMs is not null it equals it. Optional: records written before it existed do not have it.",
           "oneOf": [
             { "type": "null" },
             {

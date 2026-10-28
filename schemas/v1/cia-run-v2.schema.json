@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diagnos-tech.github.io/audit/schemas/v1/cia-run-v2.schema.json",
+  "title": "CIA run record, two witnesses",
+  "description": "What one run measured in one five-minute slot, from every witness: availability, integrity and confidentiality of every audited service. Stored at data/v1/cia/runs/YYYY/MM/DD/HHMMZ.json like cia-run/v1, which it follows in the same chain (prev links the previous record whatever its schema). Each witness's raw measurement is in witnesses, signed by that witness; services holds the combined result. Reachability checks (healthz, checkpoint) combine the measuring witnesses: fail only when every measuring witness fails, warn with code regional when one fails and another does not, none (vantage) when no witness measured. Evidence checks (log) take the worst witness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "slot", "startedAt", "finishedAt", "prev", "incidents", "witnesses", "services"],
+  "properties": {
+    "schema": { "const": "cia-run/v2" },
+    "slot": { "$ref": "defs.schema.json#/$defs/slot" },
+    "startedAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "finishedAt": { "$ref": "defs.schema.json#/$defs/time" },
+    "prev": {
+      "description": "The previous run record (cia-run/v1 or cia-run/v2), or null for the first one.",
+      "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/ciaRunLink" }]
+    },
+    "incidents": {
+      "description": "Where this run read the declared incidents from.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "commit", "readAt", "snapshot"],
+      "properties": {
+        "source": {
+          "description": "github: read from the repository in this run. cache: GitHub was unreachable; the auditor used its last good copy. none: no copy at all.",
+          "enum": ["github", "cache", "none"]
+        },
+        "commit": {
+          "description": "The commit of diagnos-tech/audit the incidents were read from.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/gitCommit" }]
+        },
+        "readAt": {
+          "description": "When that copy was read from GitHub.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }]
+        },
+        "snapshot": {
+          "description": "The incidents snapshot in force for this run (the latest one written, by this run or an earlier one).",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/ciaIncidentsLink" }]
+        }
+      }
+    },
+    "witnesses": {
+      "description": "Every configured witness, by id; europe is always present (it writes the record).",
+      "type": "object",
+      "required": ["europe"],
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/witnessId" },
+      "additionalProperties": { "$ref": "defs.schema.json#/$defs/witnessEntry" }
+    },
+    "services": { "type": "object", "minProperties": 1, "propertyNames": { "$ref": "defs.schema.json#/$defs/serviceId" }, "additionalProperties": { "$ref": "#/$defs/service" } }
+  },
+  "$defs": {
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "availability", "integrity", "confidentiality"],
+      "properties": {
+        "url": { "$ref": "defs.schema.json#/$defs/serviceUrl" },
+        "availability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level", "checks"],
+          "properties": {
+            "level": { "$ref": "defs.schema.json#/$defs/level" },
+            "checks": { "type": "array", "minItems": 1, "items": { "oneOf": [{ "$ref": "#/$defs/healthzCheck" }, { "$ref": "#/$defs/checkpointCheck" }] } }
+          }
+        },
+        "integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level", "checks"],
+          "properties": {
+            "level": { "$ref": "defs.schema.json#/$defs/level" },
+            "checks": { "type": "array", "minItems": 1, "items": { "oneOf": [{ "$ref": "#/$defs/releaseCheck" }, { "$ref": "#/$defs/logCheck" }] } }
+          }
+        },
+        "confidentiality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["level", "checks"],
+          "properties": {
+            "level": { "$ref": "defs.schema.json#/$defs/level" },
+            "checks": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "$ref": "#/$defs/incidentsCheck" } }
+          }
+        }
+      }
+    },
+    "error": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/shortText" }] },
+    "healthzCheck": {
+      "description": "The combined GET <url>healthz of the service; the probes are in witnesses.<id>.measured.probes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "error"],
+      "properties": {
+        "id": { "const": "healthz" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": {
+          "description": "regional (warn): one witness failed and another did not. vantage (none): no witness measured. Otherwise the code of the first witness (europe, then latam) whose probe has the combined level.",
+          "enum": [
+            "ok",
+            "retried",
+            "slow",
+            "tls-expiring",
+            "timeout",
+            "connect-error",
+            "tls-error",
+            "http-status",
+            "content-type",
+            "invalid-body",
+            "wrong-service",
+            "wrong-environment",
+            "challenged",
+            "vantage",
+            "regional"
+          ]
+        },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "checkpointCheck": {
+      "description": "Whether the witnesses could read a transparency log's checkpoint in this run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "error"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^checkpoint:[a-z][a-z0-9-]{0,30}$" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": {
+          "description": "Per witness: unreachable when its log code is unreachable, vantage when vantage, else ok; then combined like healthz.",
+          "enum": ["ok", "unreachable", "regional", "vantage"]
+        },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "releaseCheck": {
+      "description": "The release the service reports in /healthz, and the auditor's verdict on its signature, provenance and served files.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "version", "commit", "digest", "verdict", "firstSeen", "served", "error"],
+      "properties": {
+        "id": { "const": "release" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": {
+          "enum": [
+            "verified",
+            "pending",
+            "unverified",
+            "unsigned",
+            "unmonitored",
+            "digest-mismatch",
+            "claim-mismatch",
+            "signature-invalid",
+            "provenance-invalid",
+            "served-mismatch",
+            "unreachable",
+            "vantage"
+          ]
+        },
+        "version": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/version" }] },
+        "commit": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/gitCommit" }] },
+        "digest": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/sha256" }] },
+        "verdict": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/releaseVerdictPath" }] },
+        "firstSeen": {
+          "description": "The first run that saw this digest.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }]
+        },
+        "served": {
+          "description": "Served-file sampling for this digest so far: distinct manifest entries checked, entries with a served URL, mismatches found.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["checked", "total", "mismatches", "lastCheckedAt"],
+              "properties": {
+                "checked": { "type": "integer", "minimum": 0 },
+                "total": { "type": "integer", "minimum": 0 },
+                "mismatches": { "type": "integer", "minimum": 0 },
+                "lastCheckedAt": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/time" }] }
+              }
+            }
+          ]
+        },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "logCheck": {
+      "description": "What the witnesses did with a transparency log in this run (only on the service the logs belong to); the details are in witnesses.<id>.measured.logs.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "finding", "error"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^log:[a-z][a-z0-9-]{0,30}$" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": {
+          "description": "The worst witness's log code (finding and halted before log-error before ok before unreachable and vantage), europe first on ties.",
+          "enum": ["ok", "finding", "halted", "log-error", "unreachable", "vantage"]
+        },
+        "finding": {
+          "description": "The finding of the first witness (europe, then latam) whose log code is finding or halted.",
+          "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/findingPath" }]
+        },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    },
+    "incidentsCheck": {
+      "description": "Declared incidents affecting the service at the slot, as known to this run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "level", "code", "open", "error"],
+      "properties": {
+        "id": { "const": "incidents" },
+        "level": { "$ref": "defs.schema.json#/$defs/level" },
+        "code": { "enum": ["clear", "incident-low", "incident-high", "invalid", "unavailable"] },
+        "open": { "type": "array", "uniqueItems": true, "items": { "$ref": "defs.schema.json#/$defs/incidentId" } },
+        "error": { "$ref": "#/$defs/error" }
+      }
+    }
+  }
+}
