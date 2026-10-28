@@ -13,7 +13,9 @@ type event struct {
 	service  string
 	from, to string // 2006-01-02T15:04
 	code     string
-	percent  int // latencyEvents only
+	percent  int    // latencyEvents only
+	only     string // availabilityEvents only: the one witness that saw it; "" is both
+	reason   string // latamAnswers only: why the answer is missing
 	start    time.Time
 	end      time.Time
 }
@@ -50,15 +52,19 @@ var availabilityEvents = parseEvents([]event{
 	{service: "status", from: "2026-08-09T20:00", to: "2026-08-09T20:00", code: "http-status"},
 	{service: "status", from: "2026-09-21T12:05", to: "2026-09-21T12:05", code: "slow"},
 	// The window the witness records cover.
-	{service: "status", from: "2026-09-30T12:50", to: "2026-09-30T12:50", code: "retried"},
+	{service: "status", from: "2026-09-30T12:50", to: "2026-09-30T12:50", code: "retried", only: "europe"},
 	{service: "vault", from: "2026-09-30T15:30", to: "2026-09-30T15:35", code: "slow"},
 	{service: "sign", from: "2026-09-30T19:25", to: "2026-09-30T19:25", code: "slow"},
-	{service: "sign", from: "2026-09-30T22:10", to: "2026-09-30T22:10", code: "retried"},
+	{service: "sign", from: "2026-09-30T22:10", to: "2026-09-30T22:10", code: "retried", only: "europe"},
 	{service: "vault", from: "2026-10-01T03:10", to: "2026-10-01T03:25", code: "timeout"},
-	{service: "frontend", from: "2026-10-01T07:35", to: "2026-10-01T07:35", code: "retried"},
+	{service: "frontend", from: "2026-10-01T07:35", to: "2026-10-01T07:35", code: "retried", only: "europe"},
 	{service: "frontend", from: "2026-10-01T10:00", to: "2026-10-01T10:00", code: "slow"},
 	{service: "sign", from: "2026-10-01T11:05", to: "2026-10-01T11:10", code: "slow"},
-	{service: "vault", from: "2026-10-01T12:40", to: "2026-10-01T12:40", code: "retried"},
+	{service: "vault", from: "2026-10-01T12:40", to: "2026-10-01T12:40", code: "retried", only: "europe"},
+	// The two witnesses disagree about nothing here: the services are down for both.
+	{service: "frontend", from: "2026-10-01T12:50", to: "2026-10-01T13:05", code: "http-status"},
+	// Only Europe measured, and it confirmed the failure: down, because nobody contradicts it.
+	{service: "sign", from: "2026-10-01T11:30", to: "2026-10-01T11:35", code: "connect-error", only: "europe"},
 })
 
 // integrityEvents are the release outcomes that are not "verified". A service
@@ -128,8 +134,14 @@ func inGap(slot time.Time) bool {
 }
 
 func codeAt(events []event, service string, slot time.Time) (string, bool) {
+	return codeFor(events, "", service, slot)
+}
+
+// codeFor is codeAt as the named witness saw it: an event that only the other
+// witness saw is not there. With no witness named, every event is.
+func codeFor(events []event, witness, service string, slot time.Time) (string, bool) {
 	for _, e := range events {
-		if e.service == service && !slot.Before(e.start) && !slot.After(e.end) {
+		if e.service == service && !slot.Before(e.start) && !slot.After(e.end) && (e.only == "" || witness == "" || e.only == witness) {
 			return e.code, true
 		}
 	}

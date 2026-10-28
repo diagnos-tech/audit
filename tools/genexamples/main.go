@@ -74,6 +74,7 @@ func simulate(out string) (*sim, error) {
 		rng:        rand.New(rand.NewPCG(2026, 10)),
 		nonces:     map[time.Time]uint64{},
 		witnessKey: witnessKey("witness.example/auditor/v1"),
+		latamKey:   witnessKey(latamName),
 		idx:        map[string]*record.Index{},
 		tsaFails: map[time.Time]int{
 			time.Date(2026, 9, 30, 18, 0, 0, 0, time.UTC): 1, // primary down, backup answers
@@ -85,6 +86,12 @@ func simulate(out string) (*sim, error) {
 		return nil, err
 	}
 	if err := w.text("keys/witness/auditor.vkey", s.witnessV.VKey()+"\n"); err != nil {
+		return nil, err
+	}
+	if s.latamV, err = cosig.NewVerifier(cosig.VKey(latamName, s.latamKey.Public().(ed25519PublicKey))); err != nil {
+		return nil, err
+	}
+	if err := w.text("keys/witness/latam.vkey", s.latamV.VKey()+"\n"); err != nil {
 		return nil, err
 	}
 

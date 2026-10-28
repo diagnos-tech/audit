@@ -30,7 +30,7 @@
   "timestamp": {
     "hour": "2026-10-01T14:00:00Z",
     "record": "data/v1/timestamps/2026/10/01/14Z.json",
-    "imprint": "f7f303cabd80f7fcebc0807c49bb067c491c4ff3614dac6a82308eae7e78a499",
+    "imprint": "8a3652831f3b320a4816cd48094271edef4b9a087bfa046f409a6d56d1d4e5b0",
     "token": {
       "provider": "example-tsa",
       "genTime": "2026-10-01T14:00:08Z",

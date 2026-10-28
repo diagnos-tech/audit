@@ -15,6 +15,7 @@ type logOutcome struct {
 	size    uint64
 	record  string
 	finding string
+	root    string // the root of the checkpoint the witness read, "" when it read none
 }
 
 // latencyRange is the range of /healthz latencies of a healthy service, in

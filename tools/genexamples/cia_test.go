@@ -39,8 +39,8 @@ func runRecord(t *testing.T, dir, path string, change func(*record.CIARun)) {
 }
 
 const (
-	slowSlot  = "data/v1/cia/runs/2026/10/01/1105Z.json" // sign answered slowly
-	nextSlot  = "data/v1/cia/runs/2026/10/01/1110Z.json"
+	slowSlot  = "data/v1/cia/runs/2026/09/30/1925Z.json" // sign answered slowly
+	nextSlot  = "data/v1/cia/runs/2026/09/30/1930Z.json"
 	hourSlot  = "data/v1/cia/runs/2026/10/01/0520Z.json" // the run that stamped hour 05, after the gap
 	dayFile   = "data/v1/cia/days/2026/10/01.json"
 	releaseID = "data/v1/cia/releases/"

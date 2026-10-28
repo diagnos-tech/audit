@@ -195,12 +195,12 @@ func TestDayLatencyMatchesTheRunRecords(t *testing.T) {
 	latencies := map[string][]int{}
 	for i := 0; i < 288; i++ {
 		slot := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(i) * 5 * time.Minute)
-		var run record.CIARun
 		data, err := os.ReadFile(filepath.Join(dir, record.CIARunPath(slot)))
 		if os.IsNotExist(err) {
 			continue
 		}
-		if err != nil || record.Decode(data, "cia-run/v1", &run) != nil {
+		run, err := record.DecodeRun(data)
+		if err != nil {
 			t.Fatal(err)
 		}
 		for id, svc := range run.Services {
@@ -224,8 +224,9 @@ func TestDayLatencyMatchesTheRunRecords(t *testing.T) {
 			}
 		}
 	}
-	// The vault timed out four times that day and the run of 09:00 measured nothing: those runs have no latency.
-	if n := day.Services["vault"].Latency.Samples; n != 169-4-1 {
-		t.Errorf("vault samples %d, want %d", n, 169-4-1)
+	// The vault timed out four times that day, and the primary witness measured nothing in the runs of 09:00 and
+	// 13:15 (its own network failed): those runs have no latency.
+	if n := day.Services["vault"].Latency.Samples; n != 169-4-1-1 {
+		t.Errorf("vault samples %d, want %d", n, 169-4-1-1)
 	}
 }

@@ -3,6 +3,8 @@ package main
 import (
 	"time"
 
+	"golang.org/x/mod/sumdb/note"
+
 	"github.com/diagnos-tech/audit/tools/internal/cia"
 	"github.com/diagnos-tech/audit/tools/internal/record"
 )
@@ -22,6 +24,9 @@ type ciaSim struct {
 	last    *record.CIARun
 	lastLnk record.Link
 	runs    int
+
+	signers map[string]note.Signer // the witnesses' keys as signed-note signers, by witness
+	mem     v2Memory
 }
 
 // vantage is where the example probes run; the control probe is a request to a
@@ -54,18 +59,8 @@ func (c *ciaSim) buildRun(slot, started, finished time.Time, logs map[string]log
 	r := &record.CIARun{
 		Schema: "cia-run/v1", Slot: record.FormatTime(slot), StartedAt: record.FormatTime(started),
 		FinishedAt: record.FormatTime(finished), Vantage: vantage, Services: map[string]record.CIAService{},
-		Control: &record.CIAControl{Host: controlHost, OK: !down, HTTPStatus: ptr(204), LatencyMs: ptr(22 + jitter("control", slot, 20))},
-		Incidents: record.CIARunIncidents{Source: "github", Commit: ptr(fakeHex("develop " + slot.Format(record.DayLayout))),
-			ReadAt: ptr(record.FormatTime(started.Add(time.Second)))},
-	}
-	if down {
-		r.Control.HTTPStatus, r.Control.LatencyMs = nil, nil
-		// GitHub was out of reach too: the run used its last good copy.
-		r.Incidents.Source, r.Incidents.ReadAt = "cache", ptr(record.FormatTime(readTime(slot.Add(-record.SlotLength))))
-		r.Incidents.Commit = ptr(fakeHex("develop " + slot.Add(-record.SlotLength).Format(record.DayLayout)))
-	}
-	if snap != nil {
-		r.Incidents.Snapshot = &record.Link{Record: snap.path, SHA256: snap.sha}
+		Control:   controlProbe("control", slot, down),
+		Incidents: incidentsRead(slot, started, snap, down),
 	}
 	for _, id := range serviceIDs {
 		p := probeAt(id, slot)
@@ -94,12 +89,44 @@ func (c *ciaSim) buildRun(slot, started, finished time.Time, logs map[string]log
 	return r
 }
 
+// controlProbe is the control probe of a witness: a request to a host that has
+// nothing to do with diagnos. When the witness's own network is down it fails.
+func controlProbe(label string, slot time.Time, down bool) *record.CIAControl {
+	c := &record.CIAControl{Host: controlHost, OK: !down, HTTPStatus: ptr(204), LatencyMs: ptr(22 + jitter(label, slot, 20))}
+	if down {
+		c.HTTPStatus, c.LatencyMs = nil, nil
+	}
+	return c
+}
+
+// incidentsRead says where the run read the declared incidents from. When the
+// auditor's own network failed GitHub was out of reach too: the run used its
+// last good copy.
+func incidentsRead(slot, started time.Time, snap *snapshot, offline bool) record.CIARunIncidents {
+	in := record.CIARunIncidents{Source: "github", Commit: ptr(fakeHex("develop " + slot.Format(record.DayLayout))),
+		ReadAt: ptr(record.FormatTime(started.Add(time.Second)))}
+	if offline {
+		in.Source, in.ReadAt = "cache", ptr(record.FormatTime(readTime(slot.Add(-record.SlotLength))))
+		in.Commit = ptr(fakeHex("develop " + slot.Add(-record.SlotLength).Format(record.DayLayout)))
+	}
+	if snap != nil {
+		in.Snapshot = &record.Link{Record: snap.path, SHA256: snap.sha}
+	}
+	return in
+}
+
 // record writes the run record, chains it to the previous one and returns the
-// link the hourly timestamp pins.
+// link the hourly timestamp pins. A cia-run/v2 record is written as itself; the
+// run it projects is what the views are derived from.
 func (c *ciaSim) record(r *record.CIARun, slot time.Time) (record.Link, error) {
 	r.Prev = c.prev
+	var file any = r
+	if r.V2 != nil {
+		r.V2.Prev = c.prev
+		file = r.V2
+	}
 	path := record.CIARunPath(slot)
-	data, err := c.w.json(path, r)
+	data, err := c.w.json(path, file)
 	if err != nil {
 		return record.Link{}, err
 	}

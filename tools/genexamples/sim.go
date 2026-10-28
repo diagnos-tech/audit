@@ -28,7 +28,10 @@ type logSim struct {
 	last         *witnessed // last cosigned tree head
 	halted       bool       // after a finding the witness stops cosigning
 	findingPath  string
+	findingRoot  string // the root the log signed a second time for the size it equivocated on
 	equivocateAt time.Time
+
+	last2 *witnessed // the second witness's last cosigned tree head
 }
 
 type witnessed struct {
@@ -50,6 +53,8 @@ type sim struct {
 	logs       []*logSim
 	witnessV   *cosig.Verifier
 	witnessKey ed25519.PrivateKey
+	latamV     *cosig.Verifier
+	latamKey   ed25519.PrivateKey
 
 	tsas     []*exampleTSA
 	tsaFails map[time.Time]int // hour → how many providers fail before one answers
@@ -93,7 +98,11 @@ func (s *sim) run(start, end time.Time) error {
 		}
 		// When the auditor's own network fails nothing can be witnessed or stamped:
 		// the run records that and the next run catches up.
-		down := slot.Equal(vantageSlot)
+		plan := v2Plan{}
+		if !slot.Before(v2Start) {
+			plan = planAt(slot)
+		}
+		down := slot.Equal(vantageSlot) || plan.europeDown
 		outcomes := map[string]logOutcome{}
 		for _, l := range s.logs {
 			if down {
@@ -113,7 +122,23 @@ func (s *sim) run(start, end time.Time) error {
 			finished = at.Add(14 * time.Second) // after the slowest provider could answer
 		}
 		started := slot.Add(time.Second)
-		run := s.cia.buildRun(slot, started, finished, outcomes)
+		var run *record.CIARun
+		if slot.Before(v2Start) {
+			run = s.cia.buildRun(slot, started, finished, outcomes)
+		} else {
+			if plan.answer == partial {
+				finished = slot.Add(44 * time.Second) // the primary waited for the slow answer
+			}
+			latam, err := s.witness2All(slot, plan)
+			if err != nil {
+				return err
+			}
+			v2, err := s.cia.buildRunV2(slot, started, finished, outcomes, latam, plan)
+			if err != nil {
+				return fmt.Errorf("run record %s: %w", slot, err)
+			}
+			run = v2.AsRun()
+		}
 		link, err := s.cia.record(run, slot)
 		if err != nil {
 			return fmt.Errorf("run record %s: %w", slot, err)

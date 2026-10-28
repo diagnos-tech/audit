@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/mod/sumdb/note"
+
 	"github.com/diagnos-tech/audit/tools/internal/cia"
 	"github.com/diagnos-tech/audit/tools/internal/record"
 )
@@ -17,7 +19,12 @@ func newCIASim(w *writer, incidentsDir string) (*ciaSim, error) {
 		return nil, err
 	}
 	c := &ciaSim{w: w, releases: map[string]*release{}, snaps: snaps,
-		slots: map[time.Time]*cia.Slot{}, finish: map[time.Time]time.Time{}}
+		slots: map[time.Time]*cia.Slot{}, finish: map[time.Time]time.Time{}, signers: map[string]note.Signer{}}
+	for witness, name := range map[string]string{record.WitnessEurope: "witness.example/auditor/v1", record.WitnessLatam: latamName} {
+		if c.signers[witness], err = witnessNoteSigner(name); err != nil {
+			return nil, err
+		}
+	}
 	rels, err := exampleReleases()
 	if err != nil {
 		return nil, err
@@ -50,7 +57,11 @@ func (c *ciaSim) synthesize() error {
 		last = t
 	}
 	// The first real record links the last synthetic one, which the examples
-	// do not contain (they are a slice of a longer history).
+	// do not contain (they are a slice of a longer history). With no history
+	// before the window it is the first run, and links nothing.
+	if last.IsZero() {
+		return nil
+	}
 	path := record.CIARunPath(last)
 	c.prev = &record.Link{Record: path, SHA256: sum([]byte("example record that is not part of the examples: " + path))}
 	return nil

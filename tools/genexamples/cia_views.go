@@ -44,12 +44,12 @@ func (c *ciaSim) writeViews() error {
 		}
 		day := cia.BuildDay(in)
 		day.UpdatedAt = record.FormatTime(c.updatedAt(d, colour, events))
-		if _, err := c.w.json(record.CIADayPath(d), day); err != nil {
+		if _, err := c.w.compact(record.CIADayPath(d), day); err != nil {
 			return err
 		}
 		days[day.Day] = day
 	}
-	if _, err := c.w.json(record.CIASummaryPath, cia.BuildSummary(days, firstRun, to, last.FinishedAt)); err != nil {
+	if _, err := c.w.compact(record.CIASummaryPath, cia.BuildSummary(days, firstRun, to, last.FinishedAt)); err != nil {
 		return err
 	}
 	latest := cia.BuildLatest(cia.LatestInput{
@@ -58,18 +58,26 @@ func (c *ciaSim) writeViews() error {
 			since, _ := cia.Since(c.history, colour, service, dimension)
 			return since
 		},
+		SinceRegion: func(service, witness string) time.Time {
+			since, _ := cia.RegionSince(c.history, service, witness)
+			return since
+		},
+		SinceWitness: func(witness string) time.Time {
+			since, _ := cia.WitnessSince(c.history, witness)
+			return since
+		},
 	})
-	if _, err := c.w.json(record.CIALatestPath, latest); err != nil {
+	if _, err := c.w.compact(record.CIALatestPath, latest); err != nil {
 		return err
 	}
-	if _, err := c.w.json(record.CIAIncidentsViewPath, cia.BuildIncidentList(final.path, final.content, byID)); err != nil {
+	if _, err := c.w.compact(record.CIAIncidentsViewPath, cia.BuildIncidentList(final.path, final.content, byID)); err != nil {
 		return err
 	}
 	changes := c.changes(events, false)
-	if _, err := c.w.json(record.CIAChangesPath, record.CIAChanges{Schema: "cia-changes/v1", Events: changes}); err != nil {
+	if _, err := c.w.compact(record.CIAChangesPath, record.CIAChanges{Schema: "cia-changes/v1", Events: changes}); err != nil {
 		return err
 	}
-	if _, err := c.w.json(record.CIARecentPath, record.CIAChanges{Schema: "cia-changes-recent/v1", Events: changes[:min(recentChanges, len(changes))]}); err != nil {
+	if _, err := c.w.compact(record.CIARecentPath, record.CIAChanges{Schema: "cia-changes-recent/v1", Events: changes[:min(recentChanges, len(changes))]}); err != nil {
 		return err
 	}
 	finished := mustTime(last.FinishedAt)

@@ -5,9 +5,11 @@ exists for the tools and the docs. Written by `tools/genexamples`; CI fails if t
 stale. Not real records.
 
 - `data/` — generated: `data/v1/` holds the witness records, the hourly timestamps and tokens, the
-  month indexes, `state.json` and `latest.json`, and the CIA record under `data/v1/cia/` (run records
-  with their timings, incident snapshots, releases, day files with each service's latency,
-  `summary.json` with the daily 95th percentile latency, `latest.json`, `incidents.json`) with `sync.json`
+  month indexes, `state.json` and `latest.json`, the second witness's records under
+  `data/v1/witnesses/latam/`, and the CIA record under `data/v1/cia/` (run records with their timings,
+  cia-run/v1 until 10:00Z on 1 October and cia-run/v2 from then on, incident snapshots, releases, day
+  files with each service's latency and each witness's region, `summary.json`, `latest.json`,
+  `incidents.json`) with `sync.json`
 - `incidents/` — the incident files the snapshots are made from (input of the generator): `SUMMARY.md` lists them
-- `keys/` — generated: example log, witness and authority keys, and `signers.json`
+- `keys/` — generated: example log, witness (both) and authority keys, and `signers.json`
 - `README.md` — what each part shows, and how to check it

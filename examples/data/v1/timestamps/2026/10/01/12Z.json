@@ -5,7 +5,7 @@
     "hour": "2026-10-01T12:00:00Z",
     "cia": {
       "record": "data/v1/cia/runs/2026/10/01/1200Z.json",
-      "sha256": "7c8ee38c09e05aed2bd2968d7e548b1fda58d35834894ce6f1df89ee57769a7a"
+      "sha256": "5eee5155c7a8218c3634d0a2cd6ebf80b7e6be356ecc81c564fa7df38e2749de"
     },
     "logs": {
       "audit": {
@@ -25,15 +25,15 @@
     },
     "prev": {
       "record": "data/v1/timestamps/2026/10/01/11Z.json",
-      "sha256": "f598ea518593fa5217015a39859604ee4cdfa607f37b9d4eea6df458333f783d"
+      "sha256": "3ee66e8b5846b26123c06e85c1fbb6303a5c5a993e06ebe7371a11b6b48ae73c"
     }
   },
-  "imprint": "874ac1fcaba16c607f49e0cdb80f2b39f5917f9497a40daae4c482ed38d5e635",
+  "imprint": "2c1e39c160d7ee39d990a873d85d9955a10b3dfb2c127c7df112b037f1dde2ee",
   "token": {
     "provider": "example-tsa",
     "url": "https://tsa.example/tsr",
     "file": "data/v1/timestamps/2026/10/01/12Z.tsr",
-    "sha256": "1275f103e1c1db4f105570de8a896ae5c9fd91b8f465e4fdabf545a62cbe8093",
+    "sha256": "42a0e3117fc336e86b9150b26402473b07d98a3e6503c1cd2c169ee0c1848acd",
     "genTime": "2026-10-01T12:00:09Z",
     "serial": "1018",
     "policy": "1.3.6.1.4.1.32473.1.1",

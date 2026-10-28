@@ -1,18 +1,11 @@
 {
-  "schema": "cia-run/v1",
+  "schema": "cia-run/v2",
   "slot": "2026-10-01T12:30:00Z",
   "startedAt": "2026-10-01T12:30:01Z",
   "finishedAt": "2026-10-01T12:30:08Z",
   "prev": {
     "record": "data/v1/cia/runs/2026/10/01/1225Z.json",
-    "sha256": "b2f3ab4769b4d0147f35758f755cb4191f829513d7466c4166670f06066e5681"
-  },
-  "vantage": "scaleway:fr-par",
-  "control": {
-    "host": "connectivity.example",
-    "ok": true,
-    "httpStatus": 204,
-    "latencyMs": 32
+    "sha256": "43763a2ca746f26395ae0264a093b04d678ff35c0accb86f5eba68b6c7b4568d"
   },
   "incidents": {
     "source": "github",
@@ -21,6 +14,278 @@
     "snapshot": {
       "record": "data/v1/cia/incidents/2026/10/01/1155Z.json",
       "sha256": "c78a5fdea4145a76c35155a32291d19c5fdb9abee5e74c555d68d8d9c6b7da2e"
+    }
+  },
+  "witnesses": {
+    "europe": {
+      "status": "ok",
+      "reason": null,
+      "note": "diagnos-witness/measurement/v1\nwitness europe\nslot 2026-10-01T12:30:00Z\nrequest none\nmeasured 4602f3563249ea171aa2444cf1d8a9709db1de9b9a356d42b809147d61e8e1a7\n\n— witness.example/auditor/v1 07H2q82qFBzj0n3jged6Jen+2rCpp4FWZoTV9g+3ToPA3dcvf+HAMmDHQX6zeBN58ruWl2/t9Q+VuuYE7fd6gUqPsQ8=\n",
+      "measured": {
+        "witness": "europe",
+        "vantage": "scaleway:fr-par",
+        "slot": "2026-10-01T12:30:00Z",
+        "startedAt": "2026-10-01T12:30:01Z",
+        "finishedAt": "2026-10-01T12:30:06Z",
+        "control": {
+          "host": "connectivity.example",
+          "ok": true,
+          "httpStatus": 204,
+          "latencyMs": 32
+        },
+        "probes": {
+          "frontend": {
+            "code": "ok",
+            "class": null,
+            "attempts": 1,
+            "retriedAfter": null,
+            "httpStatus": 200,
+            "httpVersion": "2",
+            "tlsVersion": "1.3",
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "tlsIssuer": "WE1",
+            "ip": "192.0.2.10",
+            "edge": "CDG",
+            "bytes": 342,
+            "timings": {
+              "dnsMs": 2,
+              "connectMs": 9,
+              "tlsMs": 18,
+              "waitMs": 33,
+              "transferMs": 45,
+              "totalMs": 107
+            },
+            "error": null
+          },
+          "sign": {
+            "code": "ok",
+            "class": null,
+            "attempts": 1,
+            "retriedAfter": null,
+            "httpStatus": 200,
+            "httpVersion": "2",
+            "tlsVersion": "1.3",
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "tlsIssuer": "WE1",
+            "ip": "192.0.2.20",
+            "edge": "CDG",
+            "bytes": 356,
+            "timings": {
+              "dnsMs": 7,
+              "connectMs": 13,
+              "tlsMs": 32,
+              "waitMs": 62,
+              "transferMs": 80,
+              "totalMs": 194
+            },
+            "error": null
+          },
+          "status": {
+            "code": "ok",
+            "class": null,
+            "attempts": 1,
+            "retriedAfter": null,
+            "httpStatus": 200,
+            "httpVersion": "2",
+            "tlsVersion": "1.3",
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "tlsIssuer": "R11",
+            "ip": "198.51.100.40",
+            "edge": "CDG",
+            "bytes": 371,
+            "timings": {
+              "dnsMs": 5,
+              "connectMs": 9,
+              "tlsMs": 12,
+              "waitMs": 20,
+              "transferMs": 68,
+              "totalMs": 114
+            },
+            "error": null
+          },
+          "vault": {
+            "code": "ok",
+            "class": null,
+            "attempts": 1,
+            "retriedAfter": null,
+            "httpStatus": 200,
+            "httpVersion": "2",
+            "tlsVersion": "1.3",
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "tlsIssuer": "WE1",
+            "ip": "192.0.2.30",
+            "edge": "CDG",
+            "bytes": 349,
+            "timings": {
+              "dnsMs": 1,
+              "connectMs": 4,
+              "tlsMs": 7,
+              "waitMs": 26,
+              "transferMs": 43,
+              "totalMs": 81
+            },
+            "error": null
+          }
+        },
+        "logs": {
+          "audit": {
+            "code": "ok",
+            "status": "witnessed",
+            "size": 188172,
+            "root": "LbIaIAHlr+j+6NhQFofH8E9oDdKp3CfRkha/GvbGV0I=",
+            "record": "data/v1/audit/witness/2026/10/01/123005Z.json",
+            "finding": null,
+            "error": null
+          },
+          "signs": {
+            "code": "ok",
+            "status": "unchanged",
+            "size": 9219,
+            "root": "DIfW9tz8e7cOm18HRPYbSFgawmodOUSigk6ZR4N5zWg=",
+            "record": "data/v1/signs/witness/2026/10/01/122502Z.json",
+            "finding": null,
+            "error": null
+          }
+        },
+        "peer": null
+      }
+    },
+    "latam": {
+      "status": "ok",
+      "reason": null,
+      "note": "diagnos-witness/measurement/v1\nwitness latam\nslot 2026-10-01T12:30:00Z\nrequest 89adb15c03320cbc95414e194dc58ab40a75d20aa42ea94885bcc9e94534f637\nmeasured bdcc12df9fb0c3f05dde39b8d02afa67ae702d6be89a577e2d1fc20f2fc4697a\n\n— witness.example/latam/v1 ms7PMvv/d/QuQAYS1F6Gn/2qNStrqylIpOBZA2DIuUpHgIObxZCxOvCxVxEY+zhyCOoR08TXoC9qgtMBWZuxINUd9gQ=\n",
+      "measured": {
+        "witness": "latam",
+        "vantage": "oci:sa-saopaulo-1",
+        "slot": "2026-10-01T12:30:00Z",
+        "startedAt": "2026-10-01T12:30:02Z",
+        "finishedAt": "2026-10-01T12:30:07Z",
+        "control": {
+          "host": "connectivity.example",
+          "ok": true,
+          "httpStatus": 204,
+          "latencyMs": 31
+        },
+        "probes": {
+          "frontend": {
+            "code": "ok",
+            "class": null,
+            "attempts": 1,
+            "retriedAfter": null,
+            "httpStatus": 200,
+            "httpVersion": "2",
+            "tlsVersion": "1.3",
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "tlsIssuer": "WE1",
+            "ip": "203.0.113.10",
+            "edge": "GRU",
+            "bytes": 342,
+            "timings": {
+              "dnsMs": 3,
+              "connectMs": 6,
+              "tlsMs": 9,
+              "waitMs": 53,
+              "transferMs": 50,
+              "totalMs": 121
+            },
+            "error": null
+          },
+          "sign": {
+            "code": "ok",
+            "class": null,
+            "attempts": 1,
+            "retriedAfter": null,
+            "httpStatus": 200,
+            "httpVersion": "2",
+            "tlsVersion": "1.3",
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "tlsIssuer": "WE1",
+            "ip": "203.0.113.20",
+            "edge": "GRU",
+            "bytes": 356,
+            "timings": {
+              "dnsMs": 4,
+              "connectMs": 10,
+              "tlsMs": 24,
+              "waitMs": 53,
+              "transferMs": 116,
+              "totalMs": 207
+            },
+            "error": null
+          },
+          "status": {
+            "code": "ok",
+            "class": null,
+            "attempts": 1,
+            "retriedAfter": null,
+            "httpStatus": 200,
+            "httpVersion": "2",
+            "tlsVersion": "1.3",
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "tlsIssuer": "R11",
+            "ip": "203.0.113.40",
+            "edge": "GRU",
+            "bytes": 371,
+            "timings": {
+              "dnsMs": 6,
+              "connectMs": 9,
+              "tlsMs": 23,
+              "waitMs": 14,
+              "transferMs": 80,
+              "totalMs": 132
+            },
+            "error": null
+          },
+          "vault": {
+            "code": "ok",
+            "class": null,
+            "attempts": 1,
+            "retriedAfter": null,
+            "httpStatus": 200,
+            "httpVersion": "2",
+            "tlsVersion": "1.3",
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "tlsIssuer": "WE1",
+            "ip": "203.0.113.30",
+            "edge": "GRU",
+            "bytes": 349,
+            "timings": {
+              "dnsMs": 1,
+              "connectMs": 6,
+              "tlsMs": 10,
+              "waitMs": 37,
+              "transferMs": 45,
+              "totalMs": 99
+            },
+            "error": null
+          }
+        },
+        "logs": {
+          "audit": {
+            "code": "ok",
+            "status": "witnessed",
+            "size": 188172,
+            "root": "LbIaIAHlr+j+6NhQFofH8E9oDdKp3CfRkha/GvbGV0I=",
+            "record": "data/v1/witnesses/latam/audit/witness/2026/10/01/123007Z.json",
+            "finding": null,
+            "error": null
+          },
+          "signs": {
+            "code": "ok",
+            "status": "unchanged",
+            "size": 9219,
+            "root": "DIfW9tz8e7cOm18HRPYbSFgawmodOUSigk6ZR4N5zWg=",
+            "record": "data/v1/witnesses/latam/signs/witness/2026/10/01/122505Z.json",
+            "finding": null,
+            "error": null
+          }
+        },
+        "peer": {
+          "record": "data/v1/cia/runs/2026/10/01/1225Z.json",
+          "sha256": "43763a2ca746f26395ae0264a093b04d678ff35c0accb86f5eba68b6c7b4568d",
+          "verdict": "ok"
+        }
+      }
     }
   },
   "services": {
@@ -33,17 +298,6 @@
             "id": "healthz",
             "level": "ok",
             "code": "ok",
-            "attempts": 1,
-            "httpStatus": 200,
-            "latencyMs": 107,
-            "tlsNotAfter": "2027-01-14T23:59:59Z",
-            "timings": {
-              "dnsMs": 2,
-              "connectMs": 9,
-              "tlsMs": 18,
-              "firstByteMs": 62,
-              "totalMs": 107
-            },
             "error": null
           }
         ]
@@ -92,17 +346,6 @@
             "id": "healthz",
             "level": "ok",
             "code": "ok",
-            "attempts": 1,
-            "httpStatus": 200,
-            "latencyMs": 194,
-            "tlsNotAfter": "2027-01-14T23:59:59Z",
-            "timings": {
-              "dnsMs": 7,
-              "connectMs": 13,
-              "tlsMs": 32,
-              "firstByteMs": 114,
-              "totalMs": 194
-            },
             "error": null
           }
         ]
@@ -151,17 +394,6 @@
             "id": "healthz",
             "level": "ok",
             "code": "ok",
-            "attempts": 1,
-            "httpStatus": 200,
-            "latencyMs": 114,
-            "tlsNotAfter": "2027-01-14T23:59:59Z",
-            "timings": {
-              "dnsMs": 5,
-              "connectMs": 9,
-              "tlsMs": 12,
-              "firstByteMs": 46,
-              "totalMs": 114
-            },
             "error": null
           },
           {
@@ -202,9 +434,6 @@
             "id": "log:audit",
             "level": "ok",
             "code": "ok",
-            "status": "witnessed",
-            "size": 188172,
-            "record": "data/v1/audit/witness/2026/10/01/123005Z.json",
             "finding": null,
             "error": null
           },
@@ -212,9 +441,6 @@
             "id": "log:signs",
             "level": "ok",
             "code": "ok",
-            "status": "unchanged",
-            "size": 9219,
-            "record": "data/v1/signs/witness/2026/10/01/122502Z.json",
             "finding": null,
             "error": null
           }
@@ -242,17 +468,6 @@
             "id": "healthz",
             "level": "ok",
             "code": "ok",
-            "attempts": 1,
-            "httpStatus": 200,
-            "latencyMs": 81,
-            "tlsNotAfter": "2027-01-14T23:59:59Z",
-            "timings": {
-              "dnsMs": 1,
-              "connectMs": 4,
-              "tlsMs": 7,
-              "firstByteMs": 38,
-              "totalMs": 81
-            },
             "error": null
           }
         ]

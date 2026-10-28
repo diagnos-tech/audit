@@ -1,0 +1,21 @@
+{
+  "schema": "cia-incident-event/v1",
+  "id": "2026-10-01-auto-frontend-a-1250",
+  "seq": 1,
+  "type": "opened",
+  "at": "2026-10-01T13:00:00Z",
+  "source": "auditor",
+  "categories": [
+    "A"
+  ],
+  "services": [
+    "frontend"
+  ],
+  "severity": "high",
+  "startedAt": "2026-10-01T12:50:00Z",
+  "resolvedAt": null,
+  "reasons": [
+    "http-status"
+  ],
+  "run": "data/v1/cia/runs/2026/10/01/1300Z.json"
+}

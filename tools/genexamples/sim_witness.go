@@ -86,6 +86,12 @@ func (l *logSim) outcome(status string) logOutcome {
 	if status == "finding" || status == "halted" {
 		out.finding = l.findingPath
 	}
+	switch status {
+	case "unchanged", "witnessed":
+		out.root = l.last.rec.Checkpoint.Root
+	case "finding":
+		out.root = l.findingRoot // the second root the log signed for the size
+	}
 	return out
 }
 
@@ -115,7 +121,7 @@ func (s *sim) equivocate(l *logSim, at time.Time) error {
 	if _, err := s.w.json(path, f); err != nil {
 		return err
 	}
-	l.findingPath = path
+	l.findingPath, l.findingRoot = path, b64(root[:])
 	summary := record.FindingSummary{Log: f.Log, Kind: f.Kind, DetectedAt: f.DetectedAt, Record: path, Summary: f.Summary}
 	s.findings = append(s.findings, summary)
 	ix := s.index(at)

@@ -27,6 +27,15 @@ func (w *writer) json(path string, v any) ([]byte, error) {
 	return data, w.raw(path, data)
 }
 
+// compact writes a view the way the auditor does: one line of JSON.
+func (w *writer) compact(path string, v any) ([]byte, error) {
+	data, err := record.EncodeCompact(v)
+	if err != nil {
+		return nil, err
+	}
+	return data, w.raw(path, data)
+}
+
 func (w *writer) text(path, s string) error { return w.raw(path, []byte(s)) }
 
 func (w *writer) raw(path string, data []byte) error {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -25,7 +26,18 @@ func seed(label string) []byte {
 
 // logSigner returns a signed-note Ed25519 signer and its vkey.
 func logSigner(name string) (note.Signer, string, error) {
-	priv := ed25519.NewKeyFromSeed(seed("log key: " + name))
+	return noteSigner(name, ed25519.NewKeyFromSeed(seed("log key: "+name)))
+}
+
+// witnessNoteSigner signs a witness's own statements (a measurement) as
+// ordinary signed notes with the key it cosigns checkpoints with: one key per
+// witness, in the two forms of the signed-note format.
+func witnessNoteSigner(name string) (note.Signer, error) {
+	signer, _, err := noteSigner(name, witnessKey(name))
+	return signer, err
+}
+
+func noteSigner(name string, priv ed25519.PrivateKey) (note.Signer, string, error) {
 	pub := priv.Public().(ed25519.PublicKey)
 	vkey, err := note.NewEd25519VerifierKey(name, pub)
 	if err != nil {
@@ -49,6 +61,12 @@ func p256Key(label string) *ecdsa.PrivateKey {
 	d := new(big.Int).SetBytes(seed("p256: " + label))
 	d.Mod(d, new(big.Int).Sub(curve.Params().N, big.NewInt(1)))
 	d.Add(d, big.NewInt(1)) // 1 <= d < N
-	x, y := curve.ScalarBaseMult(d.FillBytes(make([]byte, 32)))
+	scalar := d.FillBytes(make([]byte, 32))
+	priv, err := ecdh.P256().NewPrivateKey(scalar)
+	if err != nil {
+		panic("genexamples: " + err.Error()) // cannot happen: 1 <= d < N
+	}
+	point := priv.PublicKey().Bytes() // 0x04 || X || Y
+	x, y := new(big.Int).SetBytes(point[1:33]), new(big.Int).SetBytes(point[33:])
 	return &ecdsa.PrivateKey{PublicKey: ecdsa.PublicKey{Curve: curve, X: x, Y: y}, D: d}
 }
