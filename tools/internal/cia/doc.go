@@ -38,4 +38,35 @@
 // any of its checks has code vantage; and without Complete the oldest record
 // only sets the state, so events at or before the fifth recorded slot are not
 // derived.
+//
+// Witnesses. A cia-run/v2 record holds the measurements of several witnesses and
+// the combined verdicts of the services. Combine* are the rules (a service is down
+// only when the witnesses that measured agree; one failing while another is up is
+// regional, a warning; a witness that measured nothing is neutral; evidence takes
+// the worst witness), and the verifier recomputes the combined verdicts with them.
+// Everything the views derive from the verdicts is the same for both versions of the
+// record, so the derivations read a cia-run/v2 record through its projection
+// (record.CIARunV2.AsRun) and only the per-witness parts, below, look inside it.
+//
+// Regions. A day file also carries, for each service and witness, the day as that
+// witness saw it: its probe's level in every slot (o, w, f, or - where the slot has no
+// record or the witness measured nothing), the totalMs of every probe that succeeded
+// (slotsMs; failures, timeouts included, are errors and not latency samples), their
+// minimum (p0), nearest-rank p50, p75, p90, p95 and p99, maximum (p100) and mean (the
+// sum doubled plus n, over twice n: rounded half up in integers), the mean, median and
+// p95 of each phase of the time, the failures by class, the slots that needed a retry
+// and the uptime. For a cia-run/v1 record, which has one vantage point, the
+// primary witness's probe is read from its healthz check (probeOfV1): the class
+// follows the code and the status, the wait is firstByteMs less the three phases
+// before it, and the transfer is totalMs less firstByteMs. The summary copies each
+// region's days, uptime and daily p50 and p95 from the day files; latest.json names
+// each witness's probe and status, and since when.
+//
+// Witness events. A witness absent for three consecutive runs (unavailable, or
+// every probe vantage or challenged) is reported unavailable, on the third and since
+// the first; present for two it is restored; a witness that is off, or a run that
+// does not name it, resets the count. A disagreement is reported on its first run:
+// an answer that did not verify (reason signature or invalid), a peer check that
+// found the published history changed, or, per log, two witnesses that read two roots
+// for one size. A level change whose slot is regional names the region that failed.
 package cia

@@ -247,3 +247,19 @@ func Encode(v any) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
+
+// EncodeCompact renders a view the way the auditor writes it: one line of JSON
+// without spaces, no HTML escaping, and a final newline. Views are compact
+// because the files that serve them are not compressed and a pretty array
+// costs a line per number; facts stay in the indented form, which people read.
+// Readers parse either: the tools compare what a file says, not how it is laid
+// out.
+func EncodeCompact(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}

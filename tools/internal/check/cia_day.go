@@ -15,6 +15,9 @@ import (
 // run was recorded, and spans that match the letters beneath them. It needs no
 // run record, so it also covers days whose records are not at hand.
 func validateDay(d *record.CIADay) []string {
+	if len(d.Runs) != cia.SlotsPerDay {
+		return []string{fmt.Sprintf("runs has %d letters, a day has %d slots", len(d.Runs), cia.SlotsPerDay)}
+	}
 	var problems []string
 	for _, id := range sortedKeys(d.Services) {
 		for _, name := range record.Dimensions {
@@ -29,6 +32,7 @@ func validateDay(d *record.CIADay) []string {
 		if problem := latencyProblem(d.Services[id].Latency, d.Runs); problem != "" {
 			problems = append(problems, id+" "+problem)
 		}
+		problems = append(problems, regionProblems(id, d.Services[id].Regions, d.Runs)...)
 	}
 	covered := map[string][]bool{}
 	var prev *record.CIASpan
@@ -118,6 +122,9 @@ func compareDay(want, got *record.CIADay, present [cia.SlotsPerDay]bool, complet
 				break
 			}
 		}
+	}
+	for _, id := range sortedKeys(want.Services) {
+		diffs = append(diffs, compareRegions(id, want.Services[id].Regions, got.Services[id].Regions, present)...)
 	}
 	for _, id := range sortedKeys(mergeKeys(want.Services, got.Services)) {
 		for _, name := range record.Dimensions {

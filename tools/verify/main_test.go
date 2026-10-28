@@ -73,7 +73,10 @@ func TestCIACommandAcceptsEveryKindOfCIAFile(t *testing.T) {
 	}
 	release := "data/v1/cia/releases/vault/" + filepath.Base(vault[0])
 	for _, file := range []string{
-		"data/v1/cia/runs/2026/10/01/1105Z.json",
+		"data/v1/cia/runs/2026/09/30/1925Z.json", // cia-run/v1
+		"data/v1/cia/runs/2026/10/01/1105Z.json", // cia-run/v2, both witnesses
+		"data/v1/cia/runs/2026/10/01/1135Z.json", // cia-run/v2, the secondary silent
+		"data/v1/cia/runs/2026/10/01/1405Z.json", // cia-run/v2, a regional failure
 		"data/v1/cia/incidents/2026/10/01/0935Z.json",
 		"data/v1/cia/days/2026/10/01.json",
 		"data/v1/cia/summary.json",
@@ -95,6 +98,45 @@ func TestCIACommandAcceptsEveryKindOfCIAFile(t *testing.T) {
 	}
 	if code, out, _ := exec("cia", "-q", "-root", root, "data/v1/cia/runs/2026/10/01/1105Z.json", "data/v1/cia/nothing.json"); code != 1 || !strings.Contains(out, "does not exist") {
 		t.Errorf("a named file that is not there must fail: exit %d\n%s", code, out)
+	}
+}
+
+// A witness record and a finding of the second witness are verified by the same
+// commands, from their own namespace, with the key keys/witness/latam.vkey.
+func TestWitnessCommandsFollowTheNamespace(t *testing.T) {
+	root := filepath.Join("..", "..", "examples")
+	for _, c := range [][]string{
+		{"witness", "-q", "-root", root, "data/v1/witnesses/latam/audit/witness/2026/10/01/102507Z.json"},
+		{"witness", "-q", "-root", root, "data/v1/audit/witness/2026/10/01/102507Z.json"},
+	} {
+		if code, out, errOut := exec(c...); code != 0 {
+			t.Errorf("verify %v: exit %d\n%s%s", c[:1], code, out, errOut)
+		}
+	}
+	// Pin a keys directory that does not have the second witness's key yet: its records verify, with a warning.
+	keys := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(keys, "witness"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"witness/auditor.vkey", "logs/audit.vkey", "logs/signs.vkey"} {
+		data, err := os.ReadFile(filepath.Join(root, "keys", f))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(keys, f)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(keys, f), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	code, out, _ := exec("witness", "-root", root, "-keys", keys, "data/v1/witnesses/latam/audit/witness/2026/10/01/102507Z.json")
+	if code != 0 || !strings.Contains(out, "is not published yet") || !strings.Contains(out, "with warnings") {
+		t.Errorf("an absent key: exit %d\n%s", code, out)
+	}
+	code, out, _ = exec("cia", "-q", "-root", root, "-keys", keys, "data/v1/cia/runs/2026/10/01/1105Z.json")
+	if code != 0 || !strings.Contains(out, "is not published yet") {
+		t.Errorf("an absent key on a run record: exit %d\n%s", code, out)
 	}
 }
 

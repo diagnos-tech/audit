@@ -1,0 +1,106 @@
+{
+  "schema": "cia-run/v2",
+  "slot": "2026-10-01T14:20:00Z",
+  "startedAt": "2026-10-01T14:20:01Z",
+  "finishedAt": "2026-10-01T14:20:09Z",
+  "prev": null,
+  "incidents": {
+    "source": "none",
+    "commit": null,
+    "readAt": null,
+    "snapshot": null
+  },
+  "witnesses": {
+    "europe": {
+      "status": "ok",
+      "reason": null,
+      "note": "diagnos-witness/measurement/v1\nwitness europe\n\n— witness.example/auditor/v1 AAAAAAA=\n",
+      "measured": {
+        "witness": "europe",
+        "vantage": "scaleway:fr-par",
+        "slot": "2026-10-01T14:20:00Z",
+        "startedAt": "2026-10-01T14:20:01Z",
+        "finishedAt": "2026-10-01T14:20:06Z",
+        "control": null,
+        "probes": {
+          "vault": {
+            "code": "ok",
+            "class": null,
+            "attempts": 1,
+            "retriedAfter": null,
+            "httpStatus": 200,
+            "httpVersion": "2",
+            "tlsVersion": "1.3",
+            "tlsNotAfter": null,
+            "tlsIssuer": null,
+            "ip": "192.0.2.30",
+            "edge": "CDG",
+            "bytes": 349,
+            "timings": {
+              "dnsMs": 4,
+              "connectMs": null,
+              "tlsMs": 14,
+              "waitMs": 16,
+              "transferMs": 51,
+              "totalMs": 91
+            },
+            "error": null
+          }
+        },
+        "logs": {},
+        "peer": null
+      }
+    },
+    "latam": {
+      "status": "unavailable",
+      "reason": "timeout",
+      "note": null,
+      "measured": null
+    }
+  },
+  "services": {
+    "vault": {
+      "url": "https://vault.example/",
+      "availability": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "healthz",
+            "level": "ok",
+            "code": "ok",
+            "error": null
+          }
+        ]
+      },
+      "integrity": {
+        "level": "none",
+        "checks": [
+          {
+            "id": "release",
+            "level": "none",
+            "code": "unreachable",
+            "version": null,
+            "commit": null,
+            "digest": null,
+            "verdict": null,
+            "firstSeen": null,
+            "served": null,
+            "error": "x"
+          }
+        ]
+      },
+      "confidentiality": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "incidents",
+            "level": "ok",
+            "code": "clear",
+            "open": [],
+            "error": null
+          }
+        ]
+      }
+    }
+  }
+}

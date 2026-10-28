@@ -24,9 +24,14 @@ func Finding(src record.Source, keys *Keyring, path string) (*record.Finding, *R
 		r.fail("format", "%v", err)
 		return nil, r
 	}
+	wid := witnessOf(path)
 	t, err := record.ParseTime(f.DetectedAt)
-	if err != nil || record.FindingPath(f.Log, t) != path {
-		r.fail("file name", "a finding of %s detected at %s belongs at %s", f.Log, f.DetectedAt, record.FindingPath(f.Log, t))
+	if err != nil || record.FindingPathOf(wid, f.Log, t) != path {
+		r.fail("file name", "a finding of %s detected at %s belongs at %s", f.Log, f.DetectedAt, record.FindingPathOf(wid, f.Log, t))
+		return nil, r
+	}
+	if other, _, ok := record.WitnessOf(f.Witnessed.Record); !ok || other != wid {
+		r.fail("witnessed", "%s is not a record of the witness whose finding this is (%s)", f.Witnessed.Record, wid)
 		return nil, r
 	}
 
@@ -40,12 +45,18 @@ func Finding(src record.Source, keys *Keyring, path string) (*record.Finding, *R
 		r.fail("witnessed", "%v", err)
 		return &f, r
 	}
-	witKey, err := keys.Witness(name)
+	witKey, absent, err := keys.OptionalWitnessKey(wid, name)
 	if err != nil {
 		r.fail("witness key", "%v", err)
 		return &f, r
 	}
-	witnessed, ok := evidenceHead(f.Witnessed, "witnessed", r, logKey, witKey)
+	signers := []note.Verifier{logKey}
+	if absent {
+		r.warn("witness key", "%s is not published yet: the cosignature on the witnessed checkpoint is not checked", WitnessKeyFileOf(wid))
+	} else {
+		signers = append(signers, witKey)
+	}
+	witnessed, ok := evidenceHead(f.Witnessed, "witnessed", r, signers...)
 	if !ok {
 		return &f, r
 	}

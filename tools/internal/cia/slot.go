@@ -20,8 +20,13 @@ type Slot struct {
 	Time     time.Time
 	Services map[string]Dims
 	// Latency is the latencyMs of each service's healthz check, for the
-	// services where it is not null.
+	// services where it is not null: the primary witness's latency.
 	Latency map[string]int
+	// Witnesses are the witnesses the run names, and Probes what each of them
+	// saw of each service: witness, then service. A v1 record is the primary
+	// witness's alone.
+	Witnesses map[string]WitnessState
+	Probes    map[string]map[string]RegionProbe
 }
 
 // FromRun extracts a Slot from a run record, trusting the levels the record
@@ -32,6 +37,7 @@ func FromRun(r *record.CIARun) (Slot, error) {
 		return Slot{}, err
 	}
 	s := Slot{Time: t, Services: map[string]Dims{}, Latency: map[string]int{}}
+	s.Witnesses, s.Probes = witnessesOf(r)
 	for id, svc := range r.Services {
 		for _, c := range svc.Availability.Checks {
 			if c.Healthz != nil && c.Healthz.LatencyMs != nil {

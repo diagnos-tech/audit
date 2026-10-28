@@ -92,6 +92,19 @@ func (v *Verifier) Verify(msg, sig []byte) bool {
 	return ed25519.Verify(v.pub, m, sig[timeSize:])
 }
 
+// NoteVerifier returns the plain signed-note verifier (algorithm 0x01) of the
+// same key. A witness signs two kinds of text with one key: checkpoints, as
+// cosignature/v1, and its own statements (a measurement) as ordinary signed
+// notes; the verifier of the second kind is derived from the first, so the
+// repository publishes one key per witness.
+func (v *Verifier) NoteVerifier() (note.Verifier, error) {
+	vkey, err := note.NewEd25519VerifierKey(v.name, v.pub)
+	if err != nil {
+		return nil, err
+	}
+	return note.NewVerifier(vkey)
+}
+
 // VKey returns the C2SP vkey (alg 0x04) for this verifier.
 func (v *Verifier) VKey() string { return VKey(v.name, v.pub) }
 

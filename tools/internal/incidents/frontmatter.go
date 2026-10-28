@@ -67,7 +67,7 @@ func parseFields(lines []string) (map[string]field, error) {
 		switch {
 		case key == "title" || key == "summary":
 			if rest != "" || i+2 >= len(lines) {
-				return nil, fmt.Errorf("line %d: %q takes two indented lines, en: and pt-BR:", n, key)
+				return nil, fmt.Errorf("line %d: %q takes two indented lines, one for en and one for pt-BR", n, key)
 			}
 			en, err := localizedLine(lines[i+1], "  en: ", n+1)
 			if err != nil {

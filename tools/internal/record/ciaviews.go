@@ -18,6 +18,9 @@ type CIADayLetters struct {
 	// Latency is the service's /healthz latency over the day. Optional in the
 	// schema; the day file is a view, so every day file carries it.
 	Latency *CIALatency `json:"latency,omitempty"`
+	// Regions is the day as each witness saw it. Optional: day files written
+	// before the second witness do not have it.
+	Regions map[string]CIADayRegion `json:"regions,omitempty"`
 }
 
 // CIALatency is the 50th and 95th percentile (nearest rank) of the latencies
@@ -74,6 +77,8 @@ type CIASummaryService struct {
 	// day's file; nil when the day has no file or no samples.
 	P95Ms  []*int    `json:"p95Ms,omitempty"`
 	Uptime CIAUptime `json:"uptime"`
+	// Regions is the same, per witness. Optional, like the day files' regions.
+	Regions map[string]CIASummaryRegion `json:"regions,omitempty"`
 }
 
 // Series returns the series of the named dimension.
@@ -109,6 +114,9 @@ type CIALatest struct {
 	FirstRun  string                      `json:"firstRun"`
 	Headline  CIAHeadline                 `json:"headline"`
 	Services  map[string]CIALatestService `json:"services"`
+	// Witnesses says, per witness, whether it measured in the latest run.
+	// Optional: present when the latest run is a cia-run/v2 record.
+	Witnesses map[string]CIALatestWitness `json:"witnesses,omitempty"`
 	Incidents CIALatestIncidents          `json:"incidents"`
 }
 
@@ -135,6 +143,9 @@ type CIALatestAvailability struct {
 	// Incidents are the published incidents affecting the dimension and not
 	// resolved, newest first.
 	Incidents []string `json:"incidents"`
+	// Regions is each witness's probe in the latest run. Optional, like
+	// Witnesses.
+	Regions map[string]CIALatestRegion `json:"regions,omitempty"`
 }
 
 type CIALatestIntegrity struct {

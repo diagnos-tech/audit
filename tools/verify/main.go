@@ -38,15 +38,16 @@ const usage = `usage: verify <command> [flags] [files]
 
 Commands:
   witness FILE...          log signature, witness cosignature and the consistency
-                           proof from the previous witness record
+                           proof from the previous witness record (either witness's)
   timestamp FILE...        hourly record: imprint, the records it names, the link to
                            the previous hour and the RFC 3161 token's contents
   finding FILE...          a finding is evidence: both checkpoints are signed and conflict
   consistency OLD [NEW]    rebuild consistency proofs from the log's own tiles: OLD → NEW,
                            and up to the log's current checkpoint
-  cia [FILE...]            the CIA record of a local clone: run records and their chain, the
-                           incident snapshots and releases they point at, and the day files,
-                           summary, latest and incidents views recomputed from them
+  cia [FILE...]            the CIA record of a local clone: run records (cia-run/v1 and v2, with
+                           each witness's signed measurement) and their chain, the incident
+                           snapshots and releases they point at, and the day files, summary,
+                           latest and incidents views recomputed from them
   incidents FILE...        incident files (incidents/*.md): the grammar and rules of the
                            declaration format; says which are published
   release DIR...           an archived release (data/v1/cia/releases/<service>/<digest>): the
@@ -132,7 +133,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if o.openssl {
 		tsOpts.OpenSSL = &check.OpenSSL{Keys: keySrc, Prefix: keyPrefix}
 	}
-	ciaOpts := check.CIAOptions{Complete: o.complete, Release: check.ReleaseOptions{Cosign: o.cosign}}
+	ciaOpts := check.CIAOptions{Complete: o.complete, Release: check.ReleaseOptions{Cosign: o.cosign}, Keys: keys}
 
 	var reports []*check.Report
 	switch cmd {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/mod/sumdb/note"
+
 	"github.com/diagnos-tech/audit/tools/internal/cosig"
 	"github.com/diagnos-tech/audit/tools/internal/merkle"
 	"github.com/diagnos-tech/audit/tools/internal/record"
@@ -18,12 +20,22 @@ import (
 //   - the consistency proof connects the previous record's tree head (read
 //     from that file) to this one.
 //
+// The witness is the one whose namespace the path is in (record.WitnessOf). The
+// key of a witness other than the primary one may not be published yet; until
+// it is, its cosignature is not checked and the report says so, and everything
+// else about the record still is.
+//
 // It returns the record (nil if unreadable) so callers can walk chains.
 func Witness(src record.Source, keys *Keyring, path string) (*record.Witness, *Report) {
 	r := &Report{Subject: path}
-	rec, h, ok := signedHead(src, keys, path, r)
+	wid, _, ok := record.WitnessOf(path)
+	if !ok {
+		r.fail("file name", "%s is not the path of a witness record", path)
+		return nil, r
+	}
+	rec, h, ok := signedHead(src, keys, wid, path, r)
 	if ok {
-		checkPrevious(src, rec, h, r)
+		checkPrevious(src, rec, h, wid, r)
 	}
 	return rec, r
 }
@@ -31,8 +43,8 @@ func Witness(src record.Source, keys *Keyring, path string) (*record.Witness, *R
 // signedHead reads a witness record and checks everything about it except
 // the link to the previous record: signatures, cosignature time, file name
 // and the tree head it repeats.
-func signedHead(src record.Source, keys *Keyring, path string, r *Report) (*record.Witness, head, bool) {
-	rec, ok := readWitness(src, path, r)
+func signedHead(src record.Source, keys *Keyring, wid, path string, r *Report) (*record.Witness, head, bool) {
+	rec, ok := readWitness(src, wid, path, r)
 	if !ok {
 		return nil, head{}, false
 	}
@@ -42,33 +54,26 @@ func signedHead(src record.Source, keys *Keyring, path string, r *Report) (*reco
 		r.fail("log key", "%v", err)
 		return rec, head{}, false
 	}
-	witKey, err := keys.Witness(rec.Cosignature.Name)
+	witKey, absent, err := keys.OptionalWitnessKey(wid, rec.Cosignature.Name)
 	if err != nil {
 		r.fail("witness key", "%v", err)
 		return rec, head{}, false
 	}
-
-	n, err := openNote(rec.Checkpoint.Note, logKey, witKey)
+	var n *note.Note
+	if absent {
+		n, err = openNote(rec.Checkpoint.Note, logKey)
+	} else {
+		n, err = openNote(rec.Checkpoint.Note, logKey, witKey)
+	}
 	if err != nil {
 		r.fail("signatures", "%v", err)
 		return rec, head{}, false
 	}
 	r.pass("log signature", "%s (key %08x)", logKey.Name(), logKey.KeyHash())
 
-	sig := findSig(n, witKey)
-	signedAt, err := cosig.Time(*sig)
-	switch {
-	case err != nil:
-		r.fail("cosignature", "%v", err)
-		return rec, head{}, false
-	case record.FormatTime(signedAt) != rec.WitnessedAt:
-		r.fail("cosignature", "signed at %s, but witnessedAt says %s", record.FormatTime(signedAt), rec.WitnessedAt)
-		return rec, head{}, false
-	case fmt.Sprintf("%08x", witKey.KeyHash()) != rec.Cosignature.KeyHash:
-		r.fail("cosignature", "key hash is %08x, the record says %s", witKey.KeyHash(), rec.Cosignature.KeyHash)
+	if !cosignatureOK(n, witKey, absent, rec, wid, r) {
 		return rec, head{}, false
 	}
-	r.pass("cosignature", "%s at %s", witKey.Name(), rec.WitnessedAt)
 
 	h, err := parseCheckpoint(n.Text)
 	switch {
@@ -87,7 +92,49 @@ func signedHead(src record.Source, keys *Keyring, path string, r *Report) (*reco
 	return rec, h, true
 }
 
-func readWitness(src record.Source, path string, r *Report) (*record.Witness, bool) {
+// cosignatureOK checks the witness's cosignature line against the record: its
+// time is witnessedAt and its key hash the one the record names. With the
+// witness's key it has been verified already; without it (the key is not
+// published yet) the line is read as it stands and the report says that its
+// signature was not checked.
+func cosignatureOK(n *note.Note, key *cosig.Verifier, absent bool, rec *record.Witness, wid string, r *Report) bool {
+	var sig note.Signature
+	var hash uint32
+	if absent {
+		found := false
+		for _, s := range n.UnverifiedSigs {
+			if s.Name == rec.Cosignature.Name {
+				sig, found = s, true
+			}
+		}
+		if !found {
+			r.fail("cosignature", "the note carries no signature by %s", rec.Cosignature.Name)
+			return false
+		}
+		hash = sig.Hash
+	} else {
+		sig, hash = *findSig(n, key), key.KeyHash()
+	}
+	signedAt, err := cosig.Time(sig)
+	switch {
+	case err != nil:
+		r.fail("cosignature", "%v", err)
+		return false
+	case record.FormatTime(signedAt) != rec.WitnessedAt:
+		r.fail("cosignature", "signed at %s, but witnessedAt says %s", record.FormatTime(signedAt), rec.WitnessedAt)
+		return false
+	case fmt.Sprintf("%08x", hash) != rec.Cosignature.KeyHash:
+		r.fail("cosignature", "key hash is %08x, the record says %s", hash, rec.Cosignature.KeyHash)
+		return false
+	case absent:
+		r.warn("cosignature", "%s at %s; its signature is not checked: %s is not published yet", rec.Cosignature.Name, rec.WitnessedAt, WitnessKeyFileOf(wid))
+		return true
+	}
+	r.pass("cosignature", "%s at %s", key.Name(), rec.WitnessedAt)
+	return true
+}
+
+func readWitness(src record.Source, wid, path string, r *Report) (*record.Witness, bool) {
 	data, err := src.Read(path)
 	if err != nil {
 		r.fail("read", "%v", err)
@@ -103,7 +150,7 @@ func readWitness(src record.Source, path string, r *Report) (*record.Witness, bo
 		r.fail("format", "witnessedAt: %v", err)
 		return nil, false
 	}
-	if want := record.WitnessPath(rec.Log, t); want != path {
+	if want := record.WitnessPathOf(wid, rec.Log, t); want != path {
 		r.fail("file name", "a record of %s witnessed at %s belongs at %s", rec.Log, rec.WitnessedAt, want)
 		return nil, false
 	}
@@ -116,7 +163,7 @@ func readWitness(src record.Source, path string, r *Report) (*record.Witness, bo
 
 // checkPrevious verifies the link to the previous record: its tree head is
 // what this record says, and the consistency proof connects the two.
-func checkPrevious(src record.Source, rec *record.Witness, h head, r *Report) {
+func checkPrevious(src record.Source, rec *record.Witness, h head, wid string, r *Report) {
 	if rec.Previous == nil {
 		if len(rec.Consistency) != 0 {
 			r.fail("consistency", "first record (no previous) with a non-empty proof")
@@ -126,7 +173,7 @@ func checkPrevious(src record.Source, rec *record.Witness, h head, r *Report) {
 		return
 	}
 	prev := rec.Previous
-	if !strings.HasPrefix(prev.Record, "data/v1/"+rec.Log+"/witness/") || prev.Record >= recordPath(rec) {
+	if !strings.HasPrefix(prev.Record, record.NamespaceDir(wid)+rec.Log+"/witness/") || prev.Record >= recordPathOf(wid, rec) {
 		r.fail("previous", "%s is not an earlier record of %s", prev.Record, rec.Log)
 		return
 	}
@@ -163,9 +210,11 @@ func checkPrevious(src record.Source, rec *record.Witness, h head, r *Report) {
 	r.pass("consistency", "%d → %d (%d hashes) from %s", prev.Size, h.Size, len(proof), prev.Record)
 }
 
-func recordPath(rec *record.Witness) string {
+func recordPath(rec *record.Witness) string { return recordPathOf(record.WitnessEurope, rec) }
+
+func recordPathOf(wid string, rec *record.Witness) string {
 	t, _ := record.ParseTime(rec.WitnessedAt)
-	return record.WitnessPath(rec.Log, t)
+	return record.WitnessPathOf(wid, rec.Log, t)
 }
 
 func encode(h merkle.Hash) string { return b64(h[:]) }

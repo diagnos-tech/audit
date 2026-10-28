@@ -16,6 +16,9 @@ type CIAOptions struct {
 	// slice, as the example data is.
 	Complete bool
 	Release  ReleaseOptions
+	// Keys are the keys to trust; the repository's keys/ when nil. Witness
+	// measurements are verified with them.
+	Keys *Keyring
 }
 
 // ciaTree lists the CIA files of a repository, sorted.
@@ -35,15 +38,20 @@ func (t *ciaTree) empty() bool {
 // derive.
 func CIA(src record.Source, t *ciaTree, opts CIAOptions) []*Report {
 	rd := newCIAReader(src)
+	if opts.Keys == nil {
+		opts.Keys = NewKeyring(src, "keys/")
+	}
 	var reports []*Report
 	recs := make([]*record.CIARun, len(t.runs))
 	datas := make([][]byte, len(t.runs))
 	runReports := make([]*Report, len(t.runs))
 	for i, p := range t.runs {
-		recs[i], datas[i], runReports[i] = ciaRun(src, p)
+		recs[i], datas[i], runReports[i] = ciaRun(src, opts.Keys, rd, p)
 		if recs[i] != nil {
 			checkSnapshotLink(rd, t.snapshots, recs[i], opts.Complete, runReports[i])
-			checkRunLinks(rd, recs[i], runReports[i])
+			if recs[i].V2 == nil {
+				checkRunLinks(rd, recs[i], runReports[i])
+			}
 		}
 	}
 	checkChain(rd, t.runs, datas, recs, runReports, opts.Complete)

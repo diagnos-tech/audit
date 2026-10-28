@@ -18,7 +18,10 @@ const (
 // Dimensions lists the three audited properties in the order every file uses.
 var Dimensions = [3]string{"availability", "integrity", "confidentiality"}
 
-// CIARun is a cia-run/v1 record: what one auditor run measured in one slot.
+// CIARun is a run record as the derivations read it: a cia-run/v1 record as
+// it is, or the v1-shaped projection of a cia-run/v2 record (see AsRun), whose
+// combined verdicts are the same kind of fact. The projection is for reading
+// only; V2 holds the record it came from.
 type CIARun struct {
 	Schema     string `json:"schema"`
 	Slot       string `json:"slot"`
@@ -31,6 +34,8 @@ type CIARun struct {
 	Control   *CIAControl           `json:"control,omitempty"`
 	Incidents CIARunIncidents       `json:"incidents"`
 	Services  map[string]CIAService `json:"services"`
+	// V2 is the record this one projects, nil for a cia-run/v1 record.
+	V2 *CIARunV2 `json:"-"`
 }
 
 // CIAControl is the control probe: a request to a host outside diagnos, made

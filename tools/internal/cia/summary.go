@@ -105,6 +105,7 @@ func BuildSummary(days map[string]*record.CIADay, firstRun, to time.Time, update
 			}
 			svc.P95Ms = append(svc.P95Ms, p95)
 		}
+		svc.Regions = summaryRegions(window[:], id)
 		sum.Services[id] = svc
 	}
 	return sum

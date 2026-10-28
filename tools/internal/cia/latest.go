@@ -17,6 +17,11 @@ type LatestInput struct {
 	Since func(service, dimension string) time.Time
 	// SnapshotPath is the declared snapshot in force, nil if none.
 	SnapshotPath *string
+	// SinceRegion and SinceWitness give the start of the current level of a
+	// witness's probe of a service, and of the current status of a witness.
+	// They are used for a cia-run/v2 record.
+	SinceRegion  func(service, witness string) time.Time
+	SinceWitness func(witness string) time.Time
 }
 
 // BuildLatest derives cia/latest.json from the latest run (INCIDENTS-CONTRACT
@@ -30,6 +35,7 @@ func BuildLatest(in LatestInput) *record.CIALatest {
 		FirstRun: record.FormatTime(in.FirstRun), Services: map[string]record.CIALatestService{},
 		Incidents: record.CIALatestIncidents{Open: in.Colour.Incidents.OpenIDs(), Snapshot: in.SnapshotPath},
 	}
+	slot, _ := FromRun(r)
 	var levels [3][]string
 	for id, svc := range r.Services {
 		var cells [3]Cell
@@ -56,7 +62,13 @@ func BuildLatest(in LatestInput) *record.CIALatest {
 					rel.Version, rel.Commit, rel.Digest, rel.Verdict
 			}
 		}
+		if r.V2 != nil {
+			l.Availability.Regions = latestRegions(slot, id, func(w string) string { return record.FormatTime(in.SinceRegion(id, w)) })
+		}
 		out.Services[id] = l
+	}
+	if r.V2 != nil {
+		out.Witnesses = latestWitnesses(slot, func(w string) string { return record.FormatTime(in.SinceWitness(w)) })
 	}
 	out.Headline = record.CIAHeadline{Availability: Worst(levels[0]...), Integrity: Worst(levels[1]...),
 		Confidentiality: Worst(levels[2]...)}

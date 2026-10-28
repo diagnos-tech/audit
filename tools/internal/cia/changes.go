@@ -34,6 +34,7 @@ func Changes(in ChangeInput) []record.CIAChange {
 	all = append(all, levelChanges(in.Runs)...)
 	all = append(all, releaseAndFindingChanges(in.Runs)...)
 	all = append(all, recordChanges(in.Runs)...)
+	all = append(all, witnessChanges(in.Runs)...)
 	all = append(all, autoIncidentChanges(in.Events)...)
 	all = append(all, declaredIncidentChanges(in.Snapshots)...)
 

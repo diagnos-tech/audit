@@ -22,14 +22,33 @@ func ParseTime(s string) (time.Time, error) {
 // FormatTime renders t in TimeLayout.
 func FormatTime(t time.Time) string { return t.UTC().Format(TimeLayout) }
 
-// WitnessPath is where the record of a cosignature made at t lives.
-func WitnessPath(log string, t time.Time) string {
-	return datedPath("data/v1/"+log+"/witness", t, "150405Z.json")
+// WitnessPath is where the record of a cosignature made by the primary witness
+// at t lives.
+func WitnessPath(log string, t time.Time) string { return WitnessPathOf(WitnessEurope, log, t) }
+
+// FindingPath is where a finding detected by the primary witness at t lives.
+func FindingPath(log string, t time.Time) string { return FindingPathOf(WitnessEurope, log, t) }
+
+// WitnessPathOf is where the record of a cosignature made by the named witness
+// at t lives. The primary witness (europe) keeps its records where they have
+// always been, data/v1/<log>/witness; every other witness has a namespace of
+// its own, data/v1/witnesses/<witness>/<log>/witness.
+func WitnessPathOf(witness, log string, t time.Time) string {
+	return datedPath(NamespaceDir(witness)+log+"/witness", t, "150405Z.json")
 }
 
-// FindingPath is where a finding detected at t lives.
-func FindingPath(log string, t time.Time) string {
-	return datedPath("data/v1/"+log+"/findings", t, "150405Z.json")
+// FindingPathOf is where a finding detected by the named witness at t lives.
+func FindingPathOf(witness, log string, t time.Time) string {
+	return datedPath(NamespaceDir(witness)+log+"/findings", t, "150405Z.json")
+}
+
+// NamespaceDir is the directory, with a trailing slash, under which a witness
+// keeps its records.
+func NamespaceDir(witness string) string {
+	if witness == WitnessEurope {
+		return "data/v1/"
+	}
+	return "data/v1/witnesses/" + witness + "/"
 }
 
 // TimestampPath is the hourly record of the hour that contains t.
@@ -55,12 +74,33 @@ func datedPath(dir string, t time.Time, name string) string {
 }
 
 var (
-	witnessRE   = regexp.MustCompile(`^data/v1/([a-z][a-z0-9-]{0,30})/witness/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{6}Z\.json$`)
-	findingRE   = regexp.MustCompile(`^data/v1/([a-z][a-z0-9-]{0,30})/findings/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{6}Z\.json$`)
+	witnessRE   = regexp.MustCompile(`^data/v1/(?:witnesses/([a-z][a-z0-9-]{1,15})/)?([a-z][a-z0-9-]{0,30})/witness/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{6}Z\.json$`)
+	findingRE   = regexp.MustCompile(`^data/v1/(?:witnesses/([a-z][a-z0-9-]{1,15})/)?([a-z][a-z0-9-]{0,30})/findings/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{6}Z\.json$`)
 	timestampRE = regexp.MustCompile(`^data/v1/timestamps/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{2}Z\.json$`)
 	tokenRE     = regexp.MustCompile(`^data/v1/timestamps/[0-9]{4}/[0-9]{2}/[0-9]{2}/[0-9]{2}Z\.tsr$`)
 	indexRE     = regexp.MustCompile(`^data/v1/index/[0-9]{4}/[0-9]{2}\.json$`)
 )
+
+// reservedLogs are names under data/v1 that are not transparency logs.
+var reservedLogs = map[string]bool{"cia": true, "index": true, "timestamps": true, "witnesses": true}
+
+// WitnessOf splits the path of a witness record or a finding into the witness
+// that made it and the log it is about. ok is false for a path that is neither,
+// including one in the namespace of europe (the primary witness never has one)
+// and one that names a log called like a directory of data/v1.
+func WitnessOf(path string) (witness, log string, ok bool) {
+	m := witnessRE.FindStringSubmatch(path)
+	if m == nil {
+		m = findingRE.FindStringSubmatch(path)
+	}
+	if m == nil || reservedLogs[m[2]] || m[1] == WitnessEurope {
+		return "", "", false
+	}
+	if m[1] == "" {
+		return WitnessEurope, m[2], true
+	}
+	return m[1], m[2], true
+}
 
 // Kind tells what a repository path holds, by its name alone: "witness",
 // "finding", "timestamp", "token", "index", "state", "latest", the kinds of
@@ -76,9 +116,15 @@ func Kind(path string) string {
 	case path == "data/v1/latest.json":
 		return "latest"
 	case witnessRE.MatchString(path):
-		return "witness"
+		if _, _, ok := WitnessOf(path); ok {
+			return "witness"
+		}
+		return ""
 	case findingRE.MatchString(path):
-		return "finding"
+		if _, _, ok := WitnessOf(path); ok {
+			return "finding"
+		}
+		return ""
 	case timestampRE.MatchString(path):
 		return "timestamp"
 	case tokenRE.MatchString(path):

@@ -63,6 +63,7 @@ func BuildDay(in DayInput) *record.CIADay {
 		day.Services[id] = record.CIADayLetters{
 			Availability: string(letters[0]), Integrity: string(letters[1]), Confidentiality: string(letters[2]),
 			Latency: DayLatency(latencies(in.Slots[:], id)),
+			Regions: dayRegions(in.Slots[:], id),
 		}
 		for d, name := range record.Dimensions {
 			day.Spans = append(day.Spans, spans(id, name, cells[d][:])...)

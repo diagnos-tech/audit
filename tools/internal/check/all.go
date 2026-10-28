@@ -7,14 +7,14 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/diagnos-tech/audit/tools/internal/record"
 )
 
 // tree is every file under data/v1 of a local repository, by kind.
 type tree struct {
-	witness    map[string][]string // log → paths, oldest first
+	witness    map[string][]string            // log → paths, oldest first
+	secondary  map[string]map[string][]string // witness other than the primary → log → paths
 	timestamps []string
 	tokens     []string
 	findings   []string
@@ -60,6 +60,8 @@ func AllWith(dir string, src record.Source, keys *Keyring, opts TimestampOptions
 		}
 	}
 
+	reports = append(reports, secondaryWitnessReports(src, keys, t)...)
+
 	var hours []*record.Timestamp
 	referenced := map[string]bool{}
 	for i, p := range t.timestamps {
@@ -98,6 +100,9 @@ func AllWith(dir string, src record.Source, keys *Keyring, opts TimestampOptions
 	s := summaries{src: src, tree: t, witness: recs, hours: hours, findings: findings}
 	reports = append(reports, s.check()...)
 	if !t.cia.empty() {
+		if ciaOpts.Keys == nil {
+			ciaOpts.Keys = keys
+		}
 		reports = append(reports, CIA(src, &t.cia, ciaOpts)...)
 	}
 	return reports, nil
@@ -155,7 +160,7 @@ func checkSubjectIsLatest(rec *record.Timestamp, recs map[string][]*record.Witne
 }
 
 func walk(dir string) (*tree, error) {
-	t := &tree{witness: map[string][]string{}}
+	t := &tree{witness: map[string][]string{}, secondary: map[string]map[string][]string{}}
 	base := filepath.Join(dir, "data", "v1")
 	err := filepath.WalkDir(base, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -168,8 +173,15 @@ func walk(dir string) (*tree, error) {
 		rel = filepath.ToSlash(rel)
 		switch record.Kind(rel) {
 		case "witness":
-			log := strings.Split(rel, "/")[2]
-			t.witness[log] = append(t.witness[log], rel)
+			wid, log, _ := record.WitnessOf(rel)
+			if wid == record.WitnessEurope {
+				t.witness[log] = append(t.witness[log], rel)
+				break
+			}
+			if t.secondary[wid] == nil {
+				t.secondary[wid] = map[string][]string{}
+			}
+			t.secondary[wid][log] = append(t.secondary[wid][log], rel)
 		case "timestamp":
 			t.timestamps = append(t.timestamps, rel)
 		case "token":

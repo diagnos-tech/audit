@@ -14,15 +14,15 @@ import (
 // (CONTRACTS §7.2): the file name is the slot, every check has the level its
 // code requires, a dimension is as bad as its worst check, and the checks come
 // in the contract's order.
-func ciaRun(src record.Source, path string) (*record.CIARun, []byte, *Report) {
+func ciaRun(src record.Source, keys *Keyring, rd *ciaReader, path string) (*record.CIARun, []byte, *Report) {
 	r := &Report{Subject: path}
 	data, err := src.Read(path)
 	if err != nil {
 		r.fail("read", "%v", err)
 		return nil, nil, r
 	}
-	var rec record.CIARun
-	if err := record.Decode(data, "cia-run/v1", &rec); err != nil {
+	rec, err := record.DecodeRun(data)
+	if err != nil {
 		r.fail("format", "%v", err)
 		return nil, data, r
 	}
@@ -43,13 +43,17 @@ func ciaRun(src record.Source, path string) (*record.CIARun, []byte, *Report) {
 	default:
 		r.pass("slot", "%s, run of %s", rec.Slot, finished.Sub(started))
 	}
+	if rec.V2 != nil {
+		checkRunV2(rd, keys, rec, path, r)
+		return rec, data, r
+	}
 	if rec.Vantage != "" && !vantageRE.MatchString(rec.Vantage) {
 		r.fail("vantage", "%q is not provider:region (for example scaleway:fr-par)", rec.Vantage)
 	}
-	checkRunIncidents(&rec, r)
-	checkRunServices(&rec, r)
-	checkVantage(&rec, r)
-	return &rec, data, r
+	checkRunIncidents(rec, r)
+	checkRunServices(rec, r)
+	checkVantage(rec, r)
+	return rec, data, r
 }
 
 var vantageRE = regexp.MustCompile(`^[a-z][a-z0-9-]*:[a-z0-9][a-z0-9-]*$`)
@@ -129,8 +133,25 @@ func checkRunServices(rec *record.CIARun, r *Report) {
 	}
 }
 
-// dimensionProblems lists what is wrong with one dimension of one service.
+// codeRules are the parts of a check's rules that differ between the versions
+// of the run record: the table of codes and levels, and the fields a code needs.
+type codeRules struct {
+	levelOf func(checkID, code string) (string, bool)
+	fields  func(record.CIACheck) []string
+}
+
+var (
+	v1Rules = codeRules{cia.LevelOfCode, checkFields}
+	v2Rules = codeRules{cia.LevelOfCodeV2, v2FieldProblems}
+)
+
+// dimensionProblems lists what is wrong with one dimension of one service of a
+// cia-run/v1 record.
 func dimensionProblems(name string, d record.CIADimension) []string {
+	return dimensionProblemsFor(v1Rules, name, d)
+}
+
+func dimensionProblemsFor(rules codeRules, name string, d record.CIADimension) []string {
 	var problems []string
 	levels := make([]string, len(d.Checks))
 	for i, c := range d.Checks {
@@ -139,14 +160,14 @@ func dimensionProblems(name string, d record.CIADimension) []string {
 			problems = append(problems, fmt.Sprintf("%s: check %q does not belong to %s", name, c.ID(), name))
 			continue
 		}
-		want, ok := cia.LevelOfCode(c.ID(), c.Code())
+		want, ok := rules.levelOf(c.ID(), c.Code())
 		switch {
 		case !ok:
 			problems = append(problems, fmt.Sprintf("%s: %q is not a code of %s", name, c.Code(), c.ID()))
 		case want != c.Level():
 			problems = append(problems, fmt.Sprintf("%s: %s with code %s must be %s, not %s", name, c.ID(), c.Code(), want, c.Level()))
 		}
-		problems = append(problems, checkFields(c)...)
+		problems = append(problems, rules.fields(c)...)
 	}
 	if !cia.Valid(d.Level) || d.Level != cia.Worst(levels...) {
 		problems = append(problems, fmt.Sprintf("%s: level %s is not the worst of its checks (%s)", name, d.Level, cia.Worst(levels...)))

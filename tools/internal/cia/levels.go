@@ -62,6 +62,25 @@ func LevelOfCode(checkID, code string) (string, bool) {
 	return level, ok
 }
 
+// v2Codes are the codes a cia-run/v2 record adds to the table: regional, the
+// verdict of a reachability check that one witness failed and another did not,
+// and challenged, a probe the edge answered with a bot challenge, which says
+// nothing about the service.
+var v2Codes = map[string]map[string]string{
+	"healthz":    {"challenged": "none", "regional": "warn"},
+	"checkpoint": {"regional": "warn"},
+}
+
+// LevelOfCodeV2 is LevelOfCode for the checks of a cia-run/v2 record.
+func LevelOfCodeV2(checkID, code string) (string, bool) {
+	if level, ok := LevelOfCode(checkID, code); ok {
+		return level, true
+	}
+	family, _, _ := strings.Cut(checkID, ":")
+	level, ok := v2Codes[family][code]
+	return level, ok
+}
+
 // DimensionOfCheck says which dimension a check id belongs to, "" if none.
 func DimensionOfCheck(checkID string) string {
 	family, _, _ := strings.Cut(checkID, ":")

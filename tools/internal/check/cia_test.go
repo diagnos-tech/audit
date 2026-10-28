@@ -128,6 +128,7 @@ func TestValidateDay(t *testing.T) {
 		d    *record.CIADay
 		want string
 	}{
+		"runs of the wrong length":     {&record.CIADay{Runs: "1111", Services: map[string]record.CIADayLetters{"vault": {Availability: "oooo"}}}, "a day has 288 slots"},
 		"consistent":                   {day("owwo", span(1, 2, "warn")), ""},
 		"letter where no run":          {day("oooow"), "no run was recorded"},
 		"letter without a span":        {day("owwo"), "no span covers"},

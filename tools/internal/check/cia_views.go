@@ -57,7 +57,7 @@ func summaryReport(rd *ciaReader, f *ciaFacts, days map[string]*record.CIADay, c
 	}
 	to := slotTime(f.last()).Truncate(24 * time.Hour)
 	want := cia.BuildSummary(days, first, to, f.last().FinishedAt)
-	if diffs := diffEncoded(want, &got, func(*record.CIASummary) {}); len(diffs) > 0 {
+	if diffs := diffEncoded(want, &got, func(s *record.CIASummary) { dropSummaryRegions(s, f.last().V2 == nil) }); len(diffs) > 0 {
 		r.fail("derived", "differs from the day files: %s", diffs[0])
 	} else {
 		r.pass("derived", "%s to %s, recomputed from %d day files", got.From, got.To, len(days))
@@ -87,6 +87,20 @@ func latestReport(rd *ciaReader, f *ciaFacts, first time.Time, complete bool) *R
 		if claimed, ok := claimedSince(&got, service, dimension); ok && reachedStart && !complete &&
 			!claimed.Before(first) && !claimed.After(since) {
 			return claimed // older runs, outside these files, may extend the sequence
+		}
+		return since
+	}
+	in.SinceRegion = func(service, witness string) time.Time {
+		since, reachedStart := cia.RegionSince(f.chain, service, witness)
+		if claimed, ok := claimedRegionSince(&got, service, witness); ok && reachedStart && !complete && !claimed.Before(first) && !claimed.After(since) {
+			return claimed
+		}
+		return since
+	}
+	in.SinceWitness = func(witness string) time.Time {
+		since, reachedStart := cia.WitnessSince(f.chain, witness)
+		if claimed, ok := claimedWitnessSince(&got, witness); ok && reachedStart && !complete && !claimed.Before(first) && !claimed.After(since) {
+			return claimed
 		}
 		return since
 	}
@@ -178,7 +192,11 @@ func dayReport(rd *ciaReader, f *ciaFacts, path string, complete bool) (*Report,
 	case !any:
 		r.pass("derived", "no run records of this day in these files; only its structure was checked")
 	default:
-		if diffs := compareDay(cia.BuildDay(in), &got, present, complete); len(diffs) > 0 {
+		want := cia.BuildDay(in)
+		if !hasV2(f, day) && !hasRegions(&got) {
+			dropDayRegions(want) // a day of cia-run/v1 records only may predate the regions
+		}
+		if diffs := compareDay(want, &got, present, complete); len(diffs) > 0 {
 			r.fail("derived", "differs from the run records: %s", diffs[0])
 		} else {
 			r.pass("derived", "recomputed from the run records and the newest incidents snapshot")

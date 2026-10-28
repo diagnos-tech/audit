@@ -65,6 +65,9 @@ func levelsOf(runs []*record.CIARun, service, dimension string) []record.CIAChan
 		e.Services, e.Categories = []string{service}, []string{map[string]string{"availability": "A", "integrity": "I"}[dimension]}
 		e.Dimension, e.From, e.To = ptr(dimension), ptr(state), ptr(candidate)
 		e.Summary = levelSummary(service, dimension, state, candidate)
+		if failed, ok := regionalFailure(r, service); ok && dimension == "availability" {
+			e.Summary = regionalSummary(e.Summary, failed)
+		}
 		out = append(out, e)
 		state, candidate, count = candidate, "", 0
 	}
@@ -137,8 +140,20 @@ func recordChanges(runs []*record.CIARun) []record.CIAChange {
 }
 
 // isVantageFailure says the run recorded its network checks as not measured
-// because the auditor's own network failed (code vantage).
+// because the auditor's own network failed (code vantage). In a cia-run/v2
+// record it means that no witness measured anything: one witness whose own
+// network failed while another measured is not news about the record.
 func isVantageFailure(r *record.CIARun) bool {
+	if r.V2 != nil {
+		for _, svc := range r.Services {
+			for _, c := range svc.Availability.Checks {
+				if c.Healthz != nil && c.Healthz.Code != "vantage" {
+					return false
+				}
+			}
+		}
+		return len(r.Services) > 0
+	}
 	for _, svc := range r.Services {
 		for _, name := range record.Dimensions {
 			for _, c := range svc.Dimension(name).Checks {

@@ -28,7 +28,7 @@ func FromLog(ctx context.Context, client *http.Client, src record.Source, keys *
 		label = "old "
 	}
 	old, oldHead, ok := labelled(r, label, func(sub *Report) (*record.Witness, head, bool) {
-		return signedHead(src, keys, oldPath, sub)
+		return signedHead(src, keys, witnessOf(oldPath), oldPath, sub)
 	})
 	if !ok {
 		return r
@@ -36,7 +36,7 @@ func FromLog(ctx context.Context, client *http.Client, src record.Source, keys *
 	target, targetHead := old, oldHead
 	if newPath != "" {
 		if target, targetHead, ok = labelled(r, "new ", func(sub *Report) (*record.Witness, head, bool) {
-			return signedHead(src, keys, newPath, sub)
+			return signedHead(src, keys, witnessOf(newPath), newPath, sub)
 		}); !ok {
 			return r
 		}
@@ -129,4 +129,13 @@ func proveFromTiles(reader *tiles.Reader, from, to head, r *Report) {
 		return
 	}
 	r.pass(name, "consistent: proof of %d hashes rebuilt from the log's tiles", len(proof))
+}
+
+// witnessOf is the witness whose namespace the path of a record is in; a path
+// that is in none is the primary witness's, and the read fails on its name.
+func witnessOf(path string) string {
+	if wid, _, ok := record.WitnessOf(path); ok {
+		return wid
+	}
+	return record.WitnessEurope
 }

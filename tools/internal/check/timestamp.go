@@ -197,8 +197,10 @@ func checkSubjectCIA(src record.Source, rec *record.Timestamp, hour time.Time, r
 		r.fail("subject cia", "%v", err)
 		return
 	}
-	var run record.CIARun
-	decodeErr := record.Decode(data, "cia-run/v1", &run)
+	run, decodeErr := record.DecodeRun(data)
+	if run == nil {
+		run = &record.CIARun{}
+	}
 	slot, slotErr := record.ParseTime(run.Slot)
 	switch {
 	case record.Kind(link.Record) != "cia-run":
