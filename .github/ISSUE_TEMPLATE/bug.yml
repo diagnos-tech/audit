@@ -1,5 +1,5 @@
-name: Page, tools or docs
-description: Something in the page, the verifier or the documentation is wrong or hard to use.
+name: Tools or docs
+description: Something in the verifier, the schemas or the documentation is wrong or hard to use.
 labels: [bug]
 body:
   - type: dropdown
@@ -7,7 +7,6 @@ body:
     attributes:
       label: Area
       options:
-        - the page (index.html, assets/)
         - the verifier (tools/verify)
         - the example data or its generator
         - schemas
@@ -20,12 +19,6 @@ body:
     id: what
     attributes:
       label: What happened, and what you expected
-      description: Include the URL or command, the browser or Go version, and screenshots for the page.
+      description: Include the command and its output, and your Go version.
     validations:
       required: true
-
-  - type: textarea
-    id: accessibility
-    attributes:
-      label: Accessibility
-      description: If this is an accessibility problem, which assistive technology, browser and operating system you use.

@@ -2,9 +2,12 @@
 # (for example @diagnos-tech/transparency).
 *                    @aquelegustavo
 
-# Keys decide what verifies: every change needs a maintainer's review.
+# Keys decide what verifies, the workflows decide what a valid signature is, and an incident is a
+# public declaration: every change needs a maintainer's review.
 /keys/               @aquelegustavo
 /schemas/            @aquelegustavo
+/incidents/          @aquelegustavo
+/.github/workflows/  @aquelegustavo
 
-# data/ is written only by the witness bot, never through a pull request. Rulesets (not CODEOWNERS)
+# data/ is written only by the auditor bot, never through a pull request. Rulesets (not CODEOWNERS)
 # enforce that; see "For maintainers" in CONTRIBUTING.md.

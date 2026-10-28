@@ -8,13 +8,13 @@ body:
         Thank you. A record that does not verify is exactly what this repository exists to expose.
 
         **Keep a copy of the files exactly as you got them**: they are evidence. If you think the failure also reveals
-        a way to attack the logs, the witness or the verifier, report it privately instead (see SECURITY.md).
+        a way to attack the logs, the witness, the auditor or the verifier, report it privately instead (see SECURITY.md).
 
   - type: input
     id: record
     attributes:
       label: Record
-      description: The path of the file that fails, e.g. data/v1/audit/witness/2026/10/25/140503Z.json
+      description: The path of the file that fails, e.g. data/v1/audit/witness/2026/10/25/140503Z.json or data/v1/cia/runs/2026/10/25/1405Z.json
     validations:
       required: true
 
