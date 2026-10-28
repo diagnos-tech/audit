@@ -1,7 +1,7 @@
 # The dead man's switch, outside Scaleway: once an hour it checks that the status page answers on
 # both of its doors, that the feeds are served on both, that the record is fresh on both copies, and
 # that the two copies hold the same bytes. A failing run e-mails the owner (GitHub's default for
-# failed scheduled workflows).
+# failed scheduled workflows). Until the auditor writes its first record it only says so and passes.
 #
 # It needs no checkout, no token and no third-party action: curl, jq and bash only.
 name: Watchdog
@@ -36,7 +36,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Until the auditor writes its first record there is nothing to watch: when latest.json answers
+      # 404 on both copies (the rule that shows "no record yet" on the page) the run says so and
+      # passes. Any other answer, an error included, keeps the watch on, so a broken door is never
+      # taken for a record that has not started.
+      - name: The record has started
+        id: record
+        run: |
+          set -uo pipefail
+          codes=""
+          for base in "$RAW_URL" "$BUCKET_URL"; do
+            code="$(curl -sS --max-time 20 --retry 2 --retry-delay 5 -o /dev/null -w '%{http_code}' "$base/data/v1/cia/latest.json")" || code=000
+            codes="$codes $code"
+          done
+          if [ "$codes" = " 404 404" ]; then
+            echo "started=false" >> "$GITHUB_OUTPUT"
+            echo "The auditor has not written its first record yet (latest.json is 404 on GitHub and on the bucket): nothing to watch." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "started=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Both doors answer /healthz
+        if: steps.record.outputs.started == 'true'
         run: |
           set -uo pipefail
           failed=0
@@ -57,7 +78,7 @@ jobs:
       # The feeds are what subscribers poll. Atom and RSS must at least start with their root
       # element; a JSON Feed must declare version 1.x.
       - name: The feeds answer on both doors
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.record.outputs.started == 'true' }}
         run: |
           set -uo pipefail
           failed=0
@@ -86,7 +107,7 @@ jobs:
           exit "$failed"
 
       - name: The record is fresh on both copies
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.record.outputs.started == 'true' }}
         run: |
           set -uo pipefail
           failed=0
@@ -115,7 +136,7 @@ jobs:
       # record on either copy is an auditor gap (shown grey on the page): another slot is drawn.
       # A record on only one copy means the mirror and the bucket disagree.
       - name: Run records are byte-equal on both copies
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.record.outputs.started == 'true' }}
         run: |
           set -uo pipefail
           failed=0 found=0 attempts=0
