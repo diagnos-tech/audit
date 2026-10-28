@@ -1,0 +1,288 @@
+{
+  "schema": "cia-run/v1",
+  "slot": "2026-09-30T13:10:00Z",
+  "startedAt": "2026-09-30T13:10:01Z",
+  "finishedAt": "2026-09-30T13:10:09Z",
+  "prev": {
+    "record": "data/v1/cia/runs/2026/09/30/1305Z.json",
+    "sha256": "a4dc352fdbc25fa23f5158f41fa4a9500615e83a54a4858a3a806041762be948"
+  },
+  "vantage": "scaleway:fr-par",
+  "control": {
+    "host": "connectivity.example",
+    "ok": true,
+    "httpStatus": 204,
+    "latencyMs": 41
+  },
+  "incidents": {
+    "source": "github",
+    "commit": "c07e4838406e28c3099e85853838b48b346093b4",
+    "readAt": "2026-09-30T13:10:02Z",
+    "snapshot": null
+  },
+  "services": {
+    "frontend": {
+      "url": "https://diagnos.example/",
+      "availability": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "healthz",
+            "level": "ok",
+            "code": "ok",
+            "attempts": 1,
+            "httpStatus": 200,
+            "latencyMs": 119,
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "timings": {
+              "dnsMs": 7,
+              "connectMs": 8,
+              "tlsMs": 17,
+              "firstByteMs": 59,
+              "totalMs": 119
+            },
+            "error": null
+          }
+        ]
+      },
+      "integrity": {
+        "level": "warn",
+        "checks": [
+          {
+            "id": "release",
+            "level": "warn",
+            "code": "unsigned",
+            "version": "1.0.28+client.0.42.1",
+            "commit": "a2e9dd99023787ac9bf88ef0799577af26ad32ff",
+            "digest": null,
+            "verdict": null,
+            "firstSeen": null,
+            "served": null,
+            "error": "The service runs a build without published evidence."
+          }
+        ]
+      },
+      "confidentiality": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "incidents",
+            "level": "ok",
+            "code": "clear",
+            "open": [],
+            "error": null
+          }
+        ]
+      }
+    },
+    "sign": {
+      "url": "https://sign.diagnos.example/",
+      "availability": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "healthz",
+            "level": "ok",
+            "code": "ok",
+            "attempts": 1,
+            "httpStatus": 200,
+            "latencyMs": 160,
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "timings": {
+              "dnsMs": 9,
+              "connectMs": 16,
+              "tlsMs": 22,
+              "firstByteMs": 76,
+              "totalMs": 160
+            },
+            "error": null
+          }
+        ]
+      },
+      "integrity": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "release",
+            "level": "ok",
+            "code": "verified",
+            "version": "0.1.18",
+            "commit": "34664d7285e1737029c36870c7ec08b8245b0896",
+            "digest": "b80c1555d6069162982b3074a5678b4d89c6da6827e44938ddf6c0e791824b5a",
+            "verdict": "data/v1/cia/releases/sign/b80c1555d6069162982b3074a5678b4d89c6da6827e44938ddf6c0e791824b5a/verdict.json",
+            "firstSeen": "2026-09-25T14:00:01Z",
+            "served": {
+              "checked": 4,
+              "total": 4,
+              "mismatches": 0,
+              "lastCheckedAt": "2026-09-30T13:09:20Z"
+            },
+            "error": null
+          }
+        ]
+      },
+      "confidentiality": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "incidents",
+            "level": "ok",
+            "code": "clear",
+            "open": [],
+            "error": null
+          }
+        ]
+      }
+    },
+    "status": {
+      "url": "https://status.diagnos.example/",
+      "availability": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "healthz",
+            "level": "ok",
+            "code": "ok",
+            "attempts": 1,
+            "httpStatus": 200,
+            "latencyMs": 100,
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "timings": {
+              "dnsMs": 5,
+              "connectMs": 8,
+              "tlsMs": 14,
+              "firstByteMs": 41,
+              "totalMs": 100
+            },
+            "error": null
+          },
+          {
+            "id": "checkpoint:audit",
+            "level": "ok",
+            "code": "ok",
+            "error": null
+          },
+          {
+            "id": "checkpoint:signs",
+            "level": "ok",
+            "code": "ok",
+            "error": null
+          }
+        ]
+      },
+      "integrity": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "release",
+            "level": "ok",
+            "code": "verified",
+            "version": "0.2.0",
+            "commit": "60f2d89fa340e91495526185cbcccd3ee3685939",
+            "digest": "5ea026449bffc76780ddf304f61bdb793fb0e8494e061ec407abfccf1c41e5d8",
+            "verdict": "data/v1/cia/releases/status/5ea026449bffc76780ddf304f61bdb793fb0e8494e061ec407abfccf1c41e5d8/verdict.json",
+            "firstSeen": "2026-09-29T09:30:02Z",
+            "served": {
+              "checked": 10,
+              "total": 10,
+              "mismatches": 0,
+              "lastCheckedAt": "2026-09-30T13:09:20Z"
+            },
+            "error": null
+          },
+          {
+            "id": "log:audit",
+            "level": "ok",
+            "code": "ok",
+            "status": "witnessed",
+            "size": 183368,
+            "record": "data/v1/audit/witness/2026/09/30/131006Z.json",
+            "finding": null,
+            "error": null
+          },
+          {
+            "id": "log:signs",
+            "level": "ok",
+            "code": "ok",
+            "status": "unchanged",
+            "size": 9140,
+            "record": "data/v1/signs/witness/2026/09/30/130503Z.json",
+            "finding": null,
+            "error": null
+          }
+        ]
+      },
+      "confidentiality": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "incidents",
+            "level": "ok",
+            "code": "clear",
+            "open": [],
+            "error": null
+          }
+        ]
+      }
+    },
+    "vault": {
+      "url": "https://vault.diagnos.example/",
+      "availability": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "healthz",
+            "level": "ok",
+            "code": "ok",
+            "attempts": 1,
+            "httpStatus": 200,
+            "latencyMs": 117,
+            "tlsNotAfter": "2027-01-14T23:59:59Z",
+            "timings": {
+              "dnsMs": 3,
+              "connectMs": 10,
+              "tlsMs": 11,
+              "firstByteMs": 71,
+              "totalMs": 117
+            },
+            "error": null
+          }
+        ]
+      },
+      "integrity": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "release",
+            "level": "ok",
+            "code": "verified",
+            "version": "0.1.29",
+            "commit": "f57c3047a9217ba271c175538b06882bcc3cad16",
+            "digest": "84bab68bc3b4efa42633698663052ada6227b26271c6348c83c514b993e965bd",
+            "verdict": "data/v1/cia/releases/vault/84bab68bc3b4efa42633698663052ada6227b26271c6348c83c514b993e965bd/verdict.json",
+            "firstSeen": "2026-09-28T16:20:01Z",
+            "served": {
+              "checked": 2,
+              "total": 2,
+              "mismatches": 0,
+              "lastCheckedAt": "2026-09-30T13:09:20Z"
+            },
+            "error": null
+          }
+        ]
+      },
+      "confidentiality": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "incidents",
+            "level": "ok",
+            "code": "clear",
+            "open": [],
+            "error": null
+          }
+        ]
+      }
+    }
+  }
+}

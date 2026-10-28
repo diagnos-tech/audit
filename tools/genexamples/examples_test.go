@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/diagnos-tech/audit/tools/internal/check"
@@ -19,20 +20,72 @@ import (
 	"github.com/diagnos-tech/audit/tools/internal/tiles/tilestest"
 )
 
-// verifyAll runs `verify all` over dir and returns the failing reports.
+// The generator runs once per test binary; every test works on its own copy.
+var (
+	baseOnce sync.Once
+	baseDir  string
+	baseSim  *sim
+	baseErr  error
+)
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if baseDir != "" {
+		os.RemoveAll(baseDir)
+	}
+	os.Exit(code)
+}
+
+// generateInto writes the example data into dir. The incident files the
+// generator reads are the ones committed under examples/.
+func generateInto(dir string) (*sim, error) {
+	if err := os.CopyFS(filepath.Join(dir, "incidents"), os.DirFS(filepath.Join("..", "..", "examples", "incidents"))); err != nil {
+		return nil, err
+	}
+	return generate(dir)
+}
+
+// generateExamples returns the simulation and a private copy of the example
+// data, which the test may damage.
+func generateExamples(t *testing.T) (*sim, string) {
+	t.Helper()
+	baseOnce.Do(func() {
+		if baseDir, baseErr = os.MkdirTemp("", "examples-"); baseErr == nil {
+			baseSim, baseErr = generateInto(baseDir)
+		}
+	})
+	if baseErr != nil {
+		t.Fatal(baseErr)
+	}
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(baseDir)); err != nil {
+		t.Fatal(err)
+	}
+	return baseSim, dir
+}
+
+// verifyAll runs `verify all` over dir without the (slow) token signature
+// checks and returns the failing reports.
 func verifyAll(t *testing.T, dir string) (failed []string, warned int) {
+	t.Helper()
+	return verifyAllWith(t, dir, check.CIAOptions{}, false)
+}
+
+func verifyAllWith(t *testing.T, dir string, ciaOpts check.CIAOptions, withOpenSSL bool) (failed []string, warned int) {
 	t.Helper()
 	src, err := record.Open(context.Background(), nil, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var opts check.TimestampOptions
-	if _, err := exec.LookPath("openssl"); err == nil {
+	if !withOpenSSL {
+		// the token signatures are checked once, in TestExamplesVerify
+	} else if _, err := exec.LookPath("openssl"); err == nil {
 		opts.OpenSSL = &check.OpenSSL{Keys: src, Prefix: "keys/"}
 	} else {
 		t.Log("openssl not found: token signatures are not checked")
 	}
-	reports, err := check.All(dir, src, check.NewKeyring(src, "keys/"), opts)
+	reports, err := check.AllWith(dir, src, check.NewKeyring(src, "keys/"), opts, ciaOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,26 +103,22 @@ func verifyAll(t *testing.T, dir string) (failed []string, warned int) {
 }
 
 func TestExamplesVerify(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := generate(dir); err != nil {
-		t.Fatal(err)
-	}
-	failed, warned := verifyAll(t, dir)
+	_, dir := generateExamples(t)
+	failed, warned := verifyAllWith(t, dir, check.CIAOptions{}, true)
 	for _, f := range failed {
 		t.Error(f)
 	}
-	if warned != 1 {
-		t.Errorf("%d reports with warnings, want 1 (the hour every provider failed)", warned)
+	// The hour every provider failed, and the four example releases, which
+	// archive no Sigstore bundle.
+	if warned != 5 {
+		t.Errorf("%d reports with warnings, want 5", warned)
 	}
 }
 
 // The committed examples must be what the generator writes today, so the
-// page, the docs and the verifier are always shown consistent data.
+// docs and the verifier are always shown consistent data.
 func TestCommittedExamplesAreCurrent(t *testing.T) {
-	dir := t.TempDir()
-	if _, err := generate(dir); err != nil {
-		t.Fatal(err)
-	}
+	_, dir := generateExamples(t)
 	committed := filepath.Join("..", "..", "examples")
 	want := listFiles(t, dir)
 	got := listFiles(t, committed)
@@ -129,10 +178,7 @@ func TestTamperingIsCaught(t *testing.T) {
 		}, "no place"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			dir := t.TempDir()
-			if _, err := generate(dir); err != nil {
-				t.Fatal(err)
-			}
+			_, dir := generateExamples(t)
 			if err := c.tamper(dir); err != nil {
 				t.Fatal(err)
 			}
@@ -160,7 +206,7 @@ func edit(dir, path, old, new string, n int) error {
 // log passes, a log that rewrote history after the witness saw it fails.
 func TestConsistencyFromLog(t *testing.T) {
 	dir := t.TempDir()
-	s, err := generate(dir)
+	s, err := generateInto(dir)
 	if err != nil {
 		t.Fatal(err)
 	}

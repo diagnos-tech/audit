@@ -1,0 +1,41 @@
+{
+  "schema": "cia-incidents/v1",
+  "readAt": "2026-09-30T17:45:02Z",
+  "source": {
+    "repository": "diagnos-tech/audit",
+    "commit": "c07e4838406e28c3099e85853838b48b346093b4",
+    "path": "incidents"
+  },
+  "incidents": [
+    {
+      "id": "2026-09-30-frontend-wrong-banner",
+      "source": "declared",
+      "file": "incidents/2026-09-30-frontend-wrong-banner.md",
+      "blob": "da8a1db15c0c0d8ac176f13a80b52de9237bc87f",
+      "title": {
+        "en": "Wrong banner on the website (declared by mistake)",
+        "pt-BR": "Banner errado no site (declarado por engano)"
+      },
+      "summary": {
+        "en": "Example data. A banner seemed to show the wrong version; it was the right one and the declaration was withdrawn.",
+        "pt-BR": "Dado de exemplo. Um banner parecia mostrar a versão errada; era a certa e a declaração foi retirada."
+      },
+      "services": [
+        "frontend"
+      ],
+      "categories": [
+        "I"
+      ],
+      "severity": "low",
+      "status": "investigating",
+      "declaredAt": "2026-09-30T17:40:00Z",
+      "startedAt": "2026-09-30T17:20:00Z",
+      "resolvedAt": null,
+      "relates": null,
+      "body": {
+        "en": "**Example data.** Declared by mistake and withdrawn.",
+        "pt-BR": "**Dado de exemplo.** Declarado por engano e retirado."
+      }
+    }
+  ]
+}

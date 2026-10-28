@@ -1,0 +1,21 @@
+{
+  "schema": "cia-incident-event/v1",
+  "id": "2026-08-12-auto-vault-a-0210",
+  "seq": 2,
+  "type": "resolved",
+  "at": "2026-08-12T02:40:00Z",
+  "source": "auditor",
+  "categories": [
+    "A"
+  ],
+  "services": [
+    "vault"
+  ],
+  "severity": "high",
+  "startedAt": "2026-08-12T02:10:00Z",
+  "resolvedAt": "2026-08-12T02:35:00Z",
+  "reasons": [
+    "timeout"
+  ],
+  "run": "data/v1/cia/runs/2026/08/12/0240Z.json"
+}

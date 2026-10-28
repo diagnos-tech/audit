@@ -1,0 +1,22 @@
+{
+  "schema": "cia-incident-event/v1",
+  "id": "2026-10-01-auto-status-i-1335",
+  "seq": 2,
+  "type": "updated",
+  "at": "2026-10-01T13:40:00Z",
+  "source": "auditor",
+  "categories": [
+    "I"
+  ],
+  "services": [
+    "status"
+  ],
+  "severity": "critical",
+  "startedAt": "2026-10-01T13:35:00Z",
+  "resolvedAt": null,
+  "reasons": [
+    "finding",
+    "halted"
+  ],
+  "run": "data/v1/cia/runs/2026/10/01/1340Z.json"
+}

@@ -1,0 +1,126 @@
+{
+  "schema": "cia-latest/v1",
+  "updatedAt": "2026-10-01T14:20:08Z",
+  "slot": "2026-10-01T14:20:00Z",
+  "record": "data/v1/cia/runs/2026/10/01/1420Z.json",
+  "firstRun": "2026-07-04T00:00:00Z",
+  "headline": {
+    "availability": "ok",
+    "integrity": "fail",
+    "confidentiality": "ok"
+  },
+  "services": {
+    "frontend": {
+      "url": "https://diagnos.example/",
+      "availability": {
+        "level": "ok",
+        "code": "ok",
+        "since": "2026-10-01T10:05:00Z",
+        "latencyMs": 74,
+        "incidents": []
+      },
+      "integrity": {
+        "level": "ok",
+        "code": "verified",
+        "since": "2026-10-01T10:05:00Z",
+        "version": "1.0.29+client.0.42.2",
+        "commit": "08cd92d8afef86359242ee60326cb84df2e78819",
+        "digest": "6061b44ff22ba5f4ae7dbf3d8d3998b84e54797765cf47e08bfd1b82fa7a907a",
+        "verdict": "data/v1/cia/releases/frontend/6061b44ff22ba5f4ae7dbf3d8d3998b84e54797765cf47e08bfd1b82fa7a907a/verdict.json",
+        "incidents": []
+      },
+      "confidentiality": {
+        "level": "ok",
+        "code": "clear",
+        "since": "2026-07-04T00:00:00Z",
+        "incidents": []
+      }
+    },
+    "sign": {
+      "url": "https://sign.diagnos.example/",
+      "availability": {
+        "level": "ok",
+        "code": "ok",
+        "since": "2026-10-01T11:15:00Z",
+        "latencyMs": 183,
+        "incidents": []
+      },
+      "integrity": {
+        "level": "ok",
+        "code": "verified",
+        "since": "2026-10-01T09:05:00Z",
+        "version": "0.1.18",
+        "commit": "34664d7285e1737029c36870c7ec08b8245b0896",
+        "digest": "b80c1555d6069162982b3074a5678b4d89c6da6827e44938ddf6c0e791824b5a",
+        "verdict": "data/v1/cia/releases/sign/b80c1555d6069162982b3074a5678b4d89c6da6827e44938ddf6c0e791824b5a/verdict.json",
+        "incidents": []
+      },
+      "confidentiality": {
+        "level": "ok",
+        "code": "clear",
+        "since": "2026-10-01T09:30:00Z",
+        "incidents": []
+      }
+    },
+    "status": {
+      "url": "https://status.diagnos.example/",
+      "availability": {
+        "level": "ok",
+        "code": "ok",
+        "since": "2026-10-01T09:05:00Z",
+        "latencyMs": 107,
+        "incidents": []
+      },
+      "integrity": {
+        "level": "fail",
+        "code": "halted",
+        "since": "2026-10-01T13:35:00Z",
+        "version": "0.2.0",
+        "commit": "60f2d89fa340e91495526185cbcccd3ee3685939",
+        "digest": "5ea026449bffc76780ddf304f61bdb793fb0e8494e061ec407abfccf1c41e5d8",
+        "verdict": "data/v1/cia/releases/status/5ea026449bffc76780ddf304f61bdb793fb0e8494e061ec407abfccf1c41e5d8/verdict.json",
+        "incidents": [
+          "2026-10-01-auto-status-i-1335"
+        ]
+      },
+      "confidentiality": {
+        "level": "ok",
+        "code": "clear",
+        "since": "2026-07-04T00:00:00Z",
+        "incidents": []
+      }
+    },
+    "vault": {
+      "url": "https://vault.diagnos.example/",
+      "availability": {
+        "level": "ok",
+        "code": "ok",
+        "since": "2026-10-01T09:05:00Z",
+        "latencyMs": 91,
+        "incidents": []
+      },
+      "integrity": {
+        "level": "ok",
+        "code": "verified",
+        "since": "2026-10-01T09:05:00Z",
+        "version": "0.1.29",
+        "commit": "f57c3047a9217ba271c175538b06882bcc3cad16",
+        "digest": "84bab68bc3b4efa42633698663052ada6227b26271c6348c83c514b993e965bd",
+        "verdict": "data/v1/cia/releases/vault/84bab68bc3b4efa42633698663052ada6227b26271c6348c83c514b993e965bd/verdict.json",
+        "incidents": []
+      },
+      "confidentiality": {
+        "level": "ok",
+        "code": "clear",
+        "since": "2026-07-04T00:00:00Z",
+        "incidents": []
+      }
+    }
+  },
+  "incidents": {
+    "open": [
+      "2026-10-01-auto-status-i-1335"
+    ],
+    "snapshot": "data/v1/cia/incidents/2026/10/01/1155Z.json"
+  }
+}

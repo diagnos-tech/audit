@@ -1,0 +1,278 @@
+{
+  "schema": "cia-run/v1",
+  "slot": "2026-10-01T09:00:00Z",
+  "startedAt": "2026-10-01T09:00:01Z",
+  "finishedAt": "2026-10-01T09:00:07Z",
+  "prev": {
+    "record": "data/v1/cia/runs/2026/10/01/0855Z.json",
+    "sha256": "28b18b99996f8d433e985d642474ba265faf189d8a3d4c27009926c9ff6cb8bc"
+  },
+  "vantage": "scaleway:fr-par",
+  "control": {
+    "host": "connectivity.example",
+    "ok": false,
+    "httpStatus": null,
+    "latencyMs": null
+  },
+  "incidents": {
+    "source": "cache",
+    "commit": "d7361490a866534aea4f45266a111bef562f230e",
+    "readAt": "2026-10-01T08:55:02Z",
+    "snapshot": {
+      "record": "data/v1/cia/incidents/2026/09/30/1815Z.json",
+      "sha256": "a7995204ea8924ce72ef1e1be1b379de2bef4b065736372ef3869aff96379ddd"
+    }
+  },
+  "services": {
+    "frontend": {
+      "url": "https://diagnos.example/",
+      "availability": {
+        "level": "none",
+        "checks": [
+          {
+            "id": "healthz",
+            "level": "none",
+            "code": "vantage",
+            "attempts": 2,
+            "httpStatus": null,
+            "latencyMs": null,
+            "tlsNotAfter": null,
+            "timings": {
+              "dnsMs": null,
+              "connectMs": null,
+              "tlsMs": null,
+              "firstByteMs": null,
+              "totalMs": 7972
+            },
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          }
+        ]
+      },
+      "integrity": {
+        "level": "none",
+        "checks": [
+          {
+            "id": "release",
+            "level": "none",
+            "code": "vantage",
+            "version": null,
+            "commit": null,
+            "digest": null,
+            "verdict": null,
+            "firstSeen": null,
+            "served": null,
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          }
+        ]
+      },
+      "confidentiality": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "incidents",
+            "level": "ok",
+            "code": "clear",
+            "open": [],
+            "error": null
+          }
+        ]
+      }
+    },
+    "sign": {
+      "url": "https://sign.diagnos.example/",
+      "availability": {
+        "level": "none",
+        "checks": [
+          {
+            "id": "healthz",
+            "level": "none",
+            "code": "vantage",
+            "attempts": 2,
+            "httpStatus": null,
+            "latencyMs": null,
+            "tlsNotAfter": null,
+            "timings": {
+              "dnsMs": null,
+              "connectMs": null,
+              "tlsMs": null,
+              "firstByteMs": null,
+              "totalMs": 7965
+            },
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          }
+        ]
+      },
+      "integrity": {
+        "level": "none",
+        "checks": [
+          {
+            "id": "release",
+            "level": "none",
+            "code": "vantage",
+            "version": null,
+            "commit": null,
+            "digest": null,
+            "verdict": null,
+            "firstSeen": null,
+            "served": null,
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          }
+        ]
+      },
+      "confidentiality": {
+        "level": "warn",
+        "checks": [
+          {
+            "id": "incidents",
+            "level": "warn",
+            "code": "incident-low",
+            "open": [
+              "2026-09-30-sign-session-ids-in-logs"
+            ],
+            "error": null
+          }
+        ]
+      }
+    },
+    "status": {
+      "url": "https://status.diagnos.example/",
+      "availability": {
+        "level": "none",
+        "checks": [
+          {
+            "id": "healthz",
+            "level": "none",
+            "code": "vantage",
+            "attempts": 2,
+            "httpStatus": null,
+            "latencyMs": null,
+            "tlsNotAfter": null,
+            "timings": {
+              "dnsMs": null,
+              "connectMs": null,
+              "tlsMs": null,
+              "firstByteMs": null,
+              "totalMs": 7978
+            },
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          },
+          {
+            "id": "checkpoint:audit",
+            "level": "none",
+            "code": "vantage",
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          },
+          {
+            "id": "checkpoint:signs",
+            "level": "none",
+            "code": "vantage",
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          }
+        ]
+      },
+      "integrity": {
+        "level": "none",
+        "checks": [
+          {
+            "id": "release",
+            "level": "none",
+            "code": "vantage",
+            "version": null,
+            "commit": null,
+            "digest": null,
+            "verdict": null,
+            "firstSeen": null,
+            "served": null,
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          },
+          {
+            "id": "log:audit",
+            "level": "none",
+            "code": "vantage",
+            "status": "error",
+            "size": null,
+            "record": null,
+            "finding": null,
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          },
+          {
+            "id": "log:signs",
+            "level": "none",
+            "code": "vantage",
+            "status": "error",
+            "size": null,
+            "record": null,
+            "finding": null,
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          }
+        ]
+      },
+      "confidentiality": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "incidents",
+            "level": "ok",
+            "code": "clear",
+            "open": [],
+            "error": null
+          }
+        ]
+      }
+    },
+    "vault": {
+      "url": "https://vault.diagnos.example/",
+      "availability": {
+        "level": "none",
+        "checks": [
+          {
+            "id": "healthz",
+            "level": "none",
+            "code": "vantage",
+            "attempts": 2,
+            "httpStatus": null,
+            "latencyMs": null,
+            "tlsNotAfter": null,
+            "timings": {
+              "dnsMs": null,
+              "connectMs": null,
+              "tlsMs": null,
+              "firstByteMs": null,
+              "totalMs": 7978
+            },
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          }
+        ]
+      },
+      "integrity": {
+        "level": "none",
+        "checks": [
+          {
+            "id": "release",
+            "level": "none",
+            "code": "vantage",
+            "version": null,
+            "commit": null,
+            "digest": null,
+            "verdict": null,
+            "firstSeen": null,
+            "served": null,
+            "error": "The auditor's own network failed (the control probe failed too), so this was not measured."
+          }
+        ]
+      },
+      "confidentiality": {
+        "level": "ok",
+        "checks": [
+          {
+            "id": "incidents",
+            "level": "ok",
+            "code": "clear",
+            "open": [],
+            "error": null
+          }
+        ]
+      }
+    }
+  }
+}

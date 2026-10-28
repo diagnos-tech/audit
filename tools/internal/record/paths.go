@@ -63,8 +63,12 @@ var (
 )
 
 // Kind tells what a repository path holds, by its name alone: "witness",
-// "finding", "timestamp", "token", "index", "state", "latest", or "" for a
-// path that has no place under data/.
+// "finding", "timestamp", "token", "index", "state", "latest", the kinds of
+// the CIA layout ("cia-run", "cia-incidents", "cia-day", "cia-summary",
+// "cia-latest", "cia-incidents-view", "cia-incident-event", "cia-changes",
+// "cia-changes-recent", "sync", "release-verdict", "release-manifest",
+// "release-evidence"), or "" for a path that has no
+// place under data/.
 func Kind(path string) string {
 	switch {
 	case path == "data/v1/state.json":
@@ -82,5 +86,5 @@ func Kind(path string) string {
 	case indexRE.MatchString(path):
 		return "index"
 	}
-	return ""
+	return ciaKind(path)
 }

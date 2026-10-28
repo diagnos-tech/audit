@@ -1,0 +1,443 @@
+{
+  "schema": "cia-changes-recent/v1",
+  "events": [
+    {
+      "id": "2026-10-01-auto-status-i-1335-2",
+      "at": "2026-10-01T13:40:00Z",
+      "since": "2026-10-01T13:40:00Z",
+      "kind": "incident-updated",
+      "services": [
+        "status"
+      ],
+      "categories": [
+        "I"
+      ],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Incident updated: status integrity (finding, halted)",
+        "pt-BR": "Incidente atualizado: status integridade (finding, halted)"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/1340Z.json",
+        "incident": "2026-10-01-auto-status-i-1335",
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "2026-10-01-auto-status-i-1335-1",
+      "at": "2026-10-01T13:35:00Z",
+      "since": "2026-10-01T13:35:00Z",
+      "kind": "incident-opened",
+      "services": [
+        "status"
+      ],
+      "categories": [
+        "I"
+      ],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Incident opened: status integrity (finding)",
+        "pt-BR": "Incidente aberto: status integridade (finding)"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/1335Z.json",
+        "incident": "2026-10-01-auto-status-i-1335",
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "202610011335-status-integrity-finding",
+      "at": "2026-10-01T13:35:00Z",
+      "since": "2026-10-01T13:35:00Z",
+      "kind": "finding",
+      "services": [
+        "status"
+      ],
+      "categories": [
+        "I"
+      ],
+      "dimension": "integrity",
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Witness finding in log signs",
+        "pt-BR": "Achado da testemunha no log signs"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/1335Z.json",
+        "incident": null,
+        "finding": "data/v1/signs/findings/2026/10/01/133507Z.json",
+        "release": null
+      }
+    },
+    {
+      "id": "202610011335-status-integrity-level",
+      "at": "2026-10-01T13:35:00Z",
+      "since": "2026-10-01T13:35:00Z",
+      "kind": "level-changed",
+      "services": [
+        "status"
+      ],
+      "categories": [
+        "I"
+      ],
+      "dimension": "integrity",
+      "from": "ok",
+      "to": "fail",
+      "summary": {
+        "en": "status integrity: verified → failed",
+        "pt-BR": "status integridade: verificada → com falha"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/1335Z.json",
+        "incident": null,
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "2026-10-01-vault-timeout-postmortem-202610011155",
+      "at": "2026-10-01T11:55:00Z",
+      "since": "2026-10-01T11:55:00Z",
+      "kind": "incident-opened",
+      "services": [
+        "vault"
+      ],
+      "categories": [
+        "A"
+      ],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Incident declared: Postmortem: vault did not answer for 20 minutes",
+        "pt-BR": "Incidente declarado: Análise: o vault ficou 20 minutos sem responder"
+      },
+      "links": {
+        "record": null,
+        "incident": "2026-10-01-vault-timeout-postmortem",
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "202610011005-frontend-integrity-level",
+      "at": "2026-10-01T10:05:00Z",
+      "since": "2026-10-01T10:05:00Z",
+      "kind": "level-changed",
+      "services": [
+        "frontend"
+      ],
+      "categories": [
+        "I"
+      ],
+      "dimension": "integrity",
+      "from": "warn",
+      "to": "ok",
+      "summary": {
+        "en": "frontend integrity: unverified → verified",
+        "pt-BR": "frontend integridade: não verificada → verificada"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/1005Z.json",
+        "incident": null,
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "202610011005-frontend-integrity-release",
+      "at": "2026-10-01T10:05:00Z",
+      "since": "2026-10-01T10:05:00Z",
+      "kind": "release-verified",
+      "services": [
+        "frontend"
+      ],
+      "categories": [
+        "I"
+      ],
+      "dimension": "integrity",
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "frontend: release 1.0.29+client.0.42.2 verified",
+        "pt-BR": "frontend: versão 1.0.29+client.0.42.2 verificada"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/1005Z.json",
+        "incident": null,
+        "finding": null,
+        "release": "data/v1/cia/releases/frontend/6061b44ff22ba5f4ae7dbf3d8d3998b84e54797765cf47e08bfd1b82fa7a907a/verdict.json"
+      }
+    },
+    {
+      "id": "2026-09-30-frontend-wrong-banner-202610010935",
+      "at": "2026-10-01T09:35:00Z",
+      "since": "2026-10-01T09:35:00Z",
+      "kind": "incident-removed",
+      "services": [
+        "frontend"
+      ],
+      "categories": [
+        "I"
+      ],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Incident removed: Wrong banner on the website (declared by mistake)",
+        "pt-BR": "Incidente removido: Banner errado no site (declarado por engano)"
+      },
+      "links": {
+        "record": null,
+        "incident": "2026-09-30-frontend-wrong-banner",
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "2026-09-30-sign-session-ids-in-logs-202610010935",
+      "at": "2026-10-01T09:35:00Z",
+      "since": "2026-10-01T09:35:00Z",
+      "kind": "incident-resolved",
+      "services": [
+        "sign"
+      ],
+      "categories": [
+        "C"
+      ],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Incident resolved: Signing session identifiers written to an internal log",
+        "pt-BR": "Incidente resolvido: Identificadores de sessão de assinatura gravados num log interno"
+      },
+      "links": {
+        "record": null,
+        "incident": "2026-09-30-sign-session-ids-in-logs",
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "202610010900-record-vantage",
+      "at": "2026-10-01T09:00:00Z",
+      "since": "2026-10-01T09:00:00Z",
+      "kind": "vantage",
+      "services": [],
+      "categories": [],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "The auditor's network failed; nothing was measured in this run (not an outage of the services)",
+        "pt-BR": "A rede do auditor falhou; nada foi medido nesta rodada (não é uma queda dos serviços)"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/0900Z.json",
+        "incident": null,
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "202610010520-record-resumed",
+      "at": "2026-10-01T05:20:00Z",
+      "since": "2026-10-01T05:20:00Z",
+      "kind": "record-resumed",
+      "services": [],
+      "categories": [],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "The record resumed after 20 minutes",
+        "pt-BR": "O registro voltou depois de 20 minutos"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/0520Z.json",
+        "incident": null,
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "202610010500-record-delayed",
+      "at": "2026-10-01T05:00:00Z",
+      "since": "2026-10-01T05:00:00Z",
+      "kind": "record-delayed",
+      "services": [],
+      "categories": [],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "The record was delayed for 20 minutes; this is not an outage of the services",
+        "pt-BR": "O registro atrasou 20 minutos; isso não é uma queda dos serviços"
+      },
+      "links": {
+        "record": null,
+        "incident": null,
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "2026-10-01-auto-vault-a-0310-2",
+      "at": "2026-10-01T03:35:00Z",
+      "since": "2026-10-01T03:35:00Z",
+      "kind": "incident-resolved",
+      "services": [
+        "vault"
+      ],
+      "categories": [
+        "A"
+      ],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Incident resolved: vault availability (timeout)",
+        "pt-BR": "Incidente resolvido: vault disponibilidade (timeout)"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/0335Z.json",
+        "incident": "2026-10-01-auto-vault-a-0310",
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "202610010335-vault-availability-level",
+      "at": "2026-10-01T03:35:00Z",
+      "since": "2026-10-01T03:30:00Z",
+      "kind": "level-changed",
+      "services": [
+        "vault"
+      ],
+      "categories": [
+        "A"
+      ],
+      "dimension": "availability",
+      "from": "fail",
+      "to": "ok",
+      "summary": {
+        "en": "vault availability: down → up",
+        "pt-BR": "vault disponibilidade: fora do ar → no ar"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/0335Z.json",
+        "incident": null,
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "2026-10-01-auto-vault-a-0310-1",
+      "at": "2026-10-01T03:20:00Z",
+      "since": "2026-10-01T03:20:00Z",
+      "kind": "incident-opened",
+      "services": [
+        "vault"
+      ],
+      "categories": [
+        "A"
+      ],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Incident opened: vault availability (timeout)",
+        "pt-BR": "Incidente aberto: vault disponibilidade (timeout)"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/0320Z.json",
+        "incident": "2026-10-01-auto-vault-a-0310",
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "202610010320-vault-availability-level",
+      "at": "2026-10-01T03:20:00Z",
+      "since": "2026-10-01T03:10:00Z",
+      "kind": "level-changed",
+      "services": [
+        "vault"
+      ],
+      "categories": [
+        "A"
+      ],
+      "dimension": "availability",
+      "from": "ok",
+      "to": "fail",
+      "summary": {
+        "en": "vault availability: up → down",
+        "pt-BR": "vault disponibilidade: no ar → fora do ar"
+      },
+      "links": {
+        "record": "data/v1/cia/runs/2026/10/01/0320Z.json",
+        "incident": null,
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "2026-09-30-sign-session-ids-in-logs-202609301815",
+      "at": "2026-09-30T18:15:00Z",
+      "since": "2026-09-30T18:15:00Z",
+      "kind": "incident-opened",
+      "services": [
+        "sign"
+      ],
+      "categories": [
+        "C"
+      ],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Incident declared: Signing session identifiers written to an internal log",
+        "pt-BR": "Incidente declarado: Identificadores de sessão de assinatura gravados num log interno"
+      },
+      "links": {
+        "record": null,
+        "incident": "2026-09-30-sign-session-ids-in-logs",
+        "finding": null,
+        "release": null
+      }
+    },
+    {
+      "id": "2026-09-30-frontend-wrong-banner-202609301745",
+      "at": "2026-09-30T17:45:00Z",
+      "since": "2026-09-30T17:45:00Z",
+      "kind": "incident-opened",
+      "services": [
+        "frontend"
+      ],
+      "categories": [
+        "I"
+      ],
+      "dimension": null,
+      "from": null,
+      "to": null,
+      "summary": {
+        "en": "Incident declared: Wrong banner on the website (declared by mistake)",
+        "pt-BR": "Incidente declarado: Banner errado no site (declarado por engano)"
+      },
+      "links": {
+        "record": null,
+        "incident": "2026-09-30-frontend-wrong-banner",
+        "finding": null,
+        "release": null
+      }
+    }
+  ]
+}

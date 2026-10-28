@@ -1,0 +1,21 @@
+{
+  "schema": "cia-incident-event/v1",
+  "id": "2026-09-03-auto-sign-a-0425",
+  "seq": 2,
+  "type": "resolved",
+  "at": "2026-09-03T04:55:00Z",
+  "source": "auditor",
+  "categories": [
+    "A"
+  ],
+  "services": [
+    "sign"
+  ],
+  "severity": "high",
+  "startedAt": "2026-09-03T04:25:00Z",
+  "resolvedAt": "2026-09-03T04:50:00Z",
+  "reasons": [
+    "connect-error"
+  ],
+  "run": "data/v1/cia/runs/2026/09/03/0455Z.json"
+}

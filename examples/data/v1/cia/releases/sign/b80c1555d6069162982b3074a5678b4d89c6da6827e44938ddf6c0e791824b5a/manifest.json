@@ -1,0 +1,46 @@
+{
+  "schema": "release-manifest/v1",
+  "service": "sign",
+  "version": "0.1.18",
+  "commit": "34664d7285e1737029c36870c7ec08b8245b0896",
+  "repository": "https://github.com/diagnos-example/monorepo",
+  "builtAt": "2026-09-25T13:40:30Z",
+  "files": [
+    {
+      "path": "assets/app.css",
+      "sha256": "74ba337df4cbcdc1491087341baa2e70df93a44ba6b2a6e29189337fe8f5d656",
+      "bytes": 9870,
+      "served": "/app.css"
+    },
+    {
+      "path": "assets/app.js",
+      "sha256": "78d8212d4b9375fa51930286eee0ac28e378f29f3cef0f7b4046d6af41532e84",
+      "bytes": 148220,
+      "served": "/app.js"
+    },
+    {
+      "path": "assets/favicon.svg",
+      "sha256": "c975026bb743825ba6373ed9802b92e7e339f4e52810b0c3b0a8ee18e8cd1512",
+      "bytes": 880,
+      "served": "/favicon.svg"
+    },
+    {
+      "path": "assets/index.html",
+      "sha256": "5cd90ef17b4eb5dffb0e83455db773ac31c93d280d2b24950c2a64fdec3a9a7e",
+      "bytes": 2410,
+      "served": "/index.html"
+    },
+    {
+      "path": "worker/index.js",
+      "sha256": "5454ea818b4747e0514cd7746ae6ac86bb0d530c923af9d149fd652980e5f016",
+      "bytes": 1204110,
+      "served": null
+    },
+    {
+      "path": "worker/wrangler.json",
+      "sha256": "fca83d9938bdf5764f3ac48b05ca5274996c6617d4c22784ed82659bdb652fa7",
+      "bytes": 3980,
+      "served": null
+    }
+  ]
+}

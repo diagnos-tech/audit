@@ -1,0 +1,34 @@
+{
+  "schema": "release-manifest/v1",
+  "service": "vault",
+  "version": "0.1.29",
+  "commit": "f57c3047a9217ba271c175538b06882bcc3cad16",
+  "repository": "https://github.com/diagnos-example/monorepo",
+  "builtAt": "2026-09-28T16:02:11Z",
+  "files": [
+    {
+      "path": "assets/favicon.svg",
+      "sha256": "aba041ed542d3c389e45663bbef9eff7fdd663d083babc688e16a52035221137",
+      "bytes": 912,
+      "served": "/favicon.svg"
+    },
+    {
+      "path": "assets/openapi.json",
+      "sha256": "c8f474c587ba76ea96e7b059d0ecdd60bde40845ebe403a0d54d3d7a3fcb632d",
+      "bytes": 184233,
+      "served": "/openapi.json"
+    },
+    {
+      "path": "worker/index.js",
+      "sha256": "9036ff0a8163f82ad7f3ae5eaf531bea737a8f58b15f96d14fa6f669a4a92deb",
+      "bytes": 1893301,
+      "served": null
+    },
+    {
+      "path": "worker/wrangler.json",
+      "sha256": "fb20d3fb9e3599d174c05363005eaf4a142d1f75030aa753dc2b0f6728d1f346",
+      "bytes": 4120,
+      "served": null
+    }
+  ]
+}

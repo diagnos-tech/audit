@@ -3,13 +3,17 @@
   "hour": "2026-10-01T05:00:00Z",
   "subject": {
     "hour": "2026-10-01T05:00:00Z",
+    "cia": {
+      "record": "data/v1/cia/runs/2026/10/01/0520Z.json",
+      "sha256": "ee1383a92f2edb7eb64cfbed13c8f51b887a0dfb2f3c1afc11ff7eef31d267c7"
+    },
     "logs": {
       "audit": {
         "origin": "transparency.example/audit/v1",
-        "size": 187560,
-        "root": "V1gaTitJatvZOkzy72XmE53Eut3a3KNw2tv6ICXKchc=",
-        "record": "data/v1/audit/witness/2026/10/01/050002Z.json",
-        "sha256": "3176fa2af7eae2adaaab8202d1bf5cc0cad53074a2e10ed8234c8285a1c7a03e"
+        "size": 187561,
+        "root": "lR6+fjmF1fYjVdHtDOYm+we5c8d5ln8njeO0HeZQtu0=",
+        "record": "data/v1/audit/witness/2026/10/01/052004Z.json",
+        "sha256": "cb80b6c41f298447ddd0e830f573edf771964936c6a83f9d0c46c9c97a1f3df2"
       },
       "signs": {
         "origin": "transparency.example/signs/v1",
@@ -21,16 +25,16 @@
     },
     "prev": {
       "record": "data/v1/timestamps/2026/10/01/04Z.json",
-      "sha256": "337835572935c3b9950fc8d6580f4efc4fda249afc6703a82d3d51e946586b6d"
+      "sha256": "289100183559a4844481bf0bde23c325c19cd696b6cc8bbc00b0da0f0ab5e944"
     }
   },
-  "imprint": "633cf913f007baa3e28b2fc31da6751c7e91f39b94eaf7355d87a3acd37900b8",
+  "imprint": "b529f27becc0b4e788c1bc2842dfe69d14a9e36aaab3648f35ea652fb7518486",
   "token": {
     "provider": "example-tsa",
     "url": "https://tsa.example/tsr",
     "file": "data/v1/timestamps/2026/10/01/05Z.tsr",
-    "sha256": "138d2068b6cf49fb881fefd2ca154477e97c72e7b5dc340f3eb08cccde400e60",
-    "genTime": "2026-10-01T05:00:05Z",
+    "sha256": "fe94ddba44876809f5ff4775d1b78c314a4b999c96d3fedeb4bee3010a3de396",
+    "genTime": "2026-10-01T05:20:07Z",
     "serial": "1011",
     "policy": "1.3.6.1.4.1.32473.1.1",
     "tsa": "CN=Example TSA (example only - not a real TSA),O=diagnos audit examples",

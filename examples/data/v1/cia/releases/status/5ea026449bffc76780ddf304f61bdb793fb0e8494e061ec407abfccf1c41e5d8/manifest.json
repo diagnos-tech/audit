@@ -1,0 +1,70 @@
+{
+  "schema": "release-manifest/v1",
+  "service": "status",
+  "version": "0.2.0",
+  "commit": "60f2d89fa340e91495526185cbcccd3ee3685939",
+  "repository": "https://github.com/diagnos-example/monorepo",
+  "builtAt": "2026-09-29T09:12:44Z",
+  "files": [
+    {
+      "path": "404.html",
+      "sha256": "4d13d2c7c4bbffee76bcbe514d42e9806959e550656b830e6bdc896a15019c6c",
+      "bytes": 1804,
+      "served": "/404.html"
+    },
+    {
+      "path": "assets/app.css",
+      "sha256": "84f5a8275fba5fc0bc027c769662d68475eb8776c027019c9a0baa5612a2437b",
+      "bytes": 9210,
+      "served": "/assets/app.css"
+    },
+    {
+      "path": "assets/app.js",
+      "sha256": "3839ee43c50edb5fa40909a3c1f88e34c0662c1d488483fb72804199ed47d1a5",
+      "bytes": 28440,
+      "served": "/assets/app.js"
+    },
+    {
+      "path": "assets/icon.svg",
+      "sha256": "78782de33799b8cbfed99d626fc34c2ecae6bbcc8f1de200c93ddd1c3b0e3264",
+      "bytes": 912,
+      "served": "/assets/icon.svg"
+    },
+    {
+      "path": "incidents/index.html",
+      "sha256": "a47e5f638035fa845fa35e9061d56f4ce11259fd500af5708178c67814ae945f",
+      "bytes": 3015,
+      "served": "/incidents/index.html"
+    },
+    {
+      "path": "index.html",
+      "sha256": "20e40832b764a0159e216d7fdafc134762645a9f0a030ef9d1c4f427573e857a",
+      "bytes": 6120,
+      "served": "/index.html"
+    },
+    {
+      "path": "sw.js",
+      "sha256": "14e2d12b060761c7c7f07965bd54c3324e69f03a4204d2942aeb3b475dc9682d",
+      "bytes": 4310,
+      "served": "/sw.js"
+    },
+    {
+      "path": "timestamps/index.html",
+      "sha256": "9f4adf989754ec4722ebf2c111a45c47ebd83e4a5382a7beeb9e72653793e452",
+      "bytes": 2890,
+      "served": "/timestamps/index.html"
+    },
+    {
+      "path": "verify/index.html",
+      "sha256": "94a447b395de18d9359d7e2c67666438194292bfb5511a43fa14f0c6c180370c",
+      "bytes": 3220,
+      "served": "/verify/index.html"
+    },
+    {
+      "path": "witness/index.html",
+      "sha256": "c2bdd894a3c0baa90e3dfbc3b84afc52c9cd84fa6433002fc614d9671507e7a0",
+      "bytes": 3015,
+      "served": "/witness/index.html"
+    }
+  ]
+}

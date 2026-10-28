@@ -8,8 +8,11 @@
 #   tools/ci/validate-json.sh -root examples      every file under examples/data/
 #   tools/ci/validate-json.sh data/v1/latest.json ...   just these (paths relative to -root)
 #
+# Besides every file under data/, keys/signers.json is validated when it exists.
 # A file under data/ that matches no known layout is an error: nothing gets
-# into the public record without a schema.
+# into the public record without a schema. Sigstore bundles (.sig and
+# provenance.sigstore.json) and RFC 3161 tokens (.tsr) have no schema; cosign
+# and tools/verify check them.
 set -euo pipefail
 
 JV="github.com/santhosh-tekuri/jsonschema/cmd/jv@v0.7.0"
@@ -28,11 +31,17 @@ trap 'rm -rf "$bin"' EXIT
 GOBIN="$bin" GOFLAGS=-mod=mod go install "$JV"
 
 if [[ $# -eq 0 ]]; then
-  if [[ ! -d "$root/data" ]]; then
+  if [[ ! -d "$root/data" && ! -f "$root/keys/signers.json" ]]; then
     echo "validate-json: no data/ under $root yet, nothing to validate"
     exit 0
   fi
-  mapfile -t files < <(cd "$root" && find data -type f | LC_ALL=C sort)
+  files=()
+  if [[ -d "$root/data" ]]; then
+    mapfile -t files < <(cd "$root" && find data -type f | LC_ALL=C sort)
+  fi
+  if [[ -f "$root/keys/signers.json" ]]; then
+    files+=(keys/signers.json)
+  fi
 else
   files=("$@")
 fi
@@ -47,6 +56,20 @@ for f in "${files[@]}"; do
     data/v1/index/[0-9][0-9][0-9][0-9]/[0-9][0-9].json) kind=index ;;
     data/v1/timestamps/*/*/*/[0-2][0-9]Z.json) kind=timestamp ;;
     data/v1/timestamps/*/*/*/[0-2][0-9]Z.tsr) continue ;; # DER, checked by tools/verify
+    data/v1/sync.json) kind=sync ;;
+    data/v1/cia/latest.json) kind=cia-latest ;;
+    data/v1/cia/summary.json) kind=cia-summary ;;
+    data/v1/cia/incidents.json) kind=cia-incident-list ;;
+    data/v1/cia/changes.json) kind=cia-changes ;;
+    data/v1/cia/changes-recent.json) kind=cia-changes-recent ;;
+    data/v1/cia/incidents/events/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/*.json) kind=cia-incident-event ;;
+    data/v1/cia/days/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9].json) kind=cia-day ;;
+    data/v1/cia/runs/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/[0-2][0-9][0-5][05]Z.json) kind=cia-run ;;
+    data/v1/cia/incidents/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/[0-2][0-9][0-5][05]Z.json) kind=cia-incidents ;;
+    data/v1/cia/releases/*/*/verdict.json) kind=cia-release ;;
+    data/v1/cia/releases/*/*/manifest.json) kind=release-manifest ;;
+    data/v1/cia/releases/*/*/manifest.json.sig | data/v1/cia/releases/*/*/provenance.sigstore.json) continue ;; # Sigstore bundles, checked by cosign
+    keys/signers.json) kind=signers ;;
     data/v1/*/witness/*/*/*/[0-9][0-9][0-9][0-9][0-9][0-9]Z.json) kind=witness ;;
     data/v1/*/findings/*/*/*/[0-9][0-9][0-9][0-9][0-9][0-9]Z.json) kind=finding ;;
     *)

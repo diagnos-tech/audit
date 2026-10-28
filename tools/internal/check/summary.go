@@ -10,8 +10,8 @@ import (
 )
 
 // summaries cross-checks the files that summarise records (state.json,
-// latest.json, the month indexes) against the records themselves. The page
-// reads the summaries; this is what keeps them honest.
+// latest.json, the month indexes) against the records themselves. Readers
+// start from the summaries; this is what keeps them honest.
 type summaries struct {
 	src      record.Source
 	tree     *tree

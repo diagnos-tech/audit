@@ -1,15 +1,19 @@
 // Command verify checks the records of github.com/diagnos-tech/audit without
-// trusting diagnos, the witness, or this repository's web page.
+// trusting diagnos, the auditor, or any page that shows them.
 //
 //	go run ./tools/verify witness data/v1/audit/witness/2026/10/25/140503Z.json
 //	go run ./tools/verify timestamp -openssl data/v1/timestamps/2026/10/25/14Z.json
 //	go run ./tools/verify consistency data/v1/audit/witness/2026/10/25/140503Z.json
+//	go run ./tools/verify cia [-complete]
+//	go run ./tools/verify incidents incidents/*.md
+//	go run ./tools/verify release [-cosign] data/v1/cia/releases/vault/<digest>
 //	go run ./tools/verify all
 //
-// Without a clone, point -root at the published site:
+// Without a clone, point -root at a web server that serves the repository's
+// files at the same paths, such as raw GitHub:
 //
 //	go run github.com/diagnos-tech/audit/tools/verify@latest witness \
-//	  -root https://diagnos-tech.github.io/audit/ data/v1/audit/witness/...
+//	  -root https://raw.githubusercontent.com/diagnos-tech/audit/develop/ data/v1/audit/witness/...
 //
 // It depends on nothing but the Go standard library and
 // golang.org/x/mod/sumdb/note. See VERIFY.md for what each check proves.
@@ -23,6 +27,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/diagnos-tech/audit/tools/internal/check"
 	"github.com/diagnos-tech/audit/tools/internal/record"
@@ -39,16 +44,30 @@ Commands:
   finding FILE...          a finding is evidence: both checkpoints are signed and conflict
   consistency OLD [NEW]    rebuild consistency proofs from the log's own tiles: OLD → NEW,
                            and up to the log's current checkpoint
+  cia [FILE...]            the CIA record of a local clone: run records and their chain, the
+                           incident snapshots and releases they point at, and the day files,
+                           summary, latest and incidents views recomputed from them
+  incidents FILE...        incident files (incidents/*.md): the grammar and rules of the
+                           declaration format; says which are published
+  release DIR...           an archived release (data/v1/cia/releases/<service>/<digest>): the
+                           manifest hashes to the directory name and agrees with the verdict,
+                           which names the identity pinned in keys/signers.json
   all                      every file under data/v1 of a local clone, the chains between
                            them, and state.json, latest.json and the month indexes
 
 Flags (after the command):
   -root DIR|URL   repository to read files from (default "."); a URL such as
-                  https://diagnos-tech.github.io/audit/ works without a clone
+                  https://raw.githubusercontent.com/diagnos-tech/audit/develop/
+                  works without a clone, but cannot be listed: cia and all need a clone
   -keys DIR       keys directory to trust (default: keys/ inside -root). Pin a copy
                   obtained elsewhere to make the check independent of this repository
   -openssl        timestamp, all: also verify each token's TSA signature and chain
                   with "openssl ts -verify" against keys/tsa/<provider>.pem
+  -complete       cia, all: the files are the whole history (as in a clone of the real
+                  record); the oldest run record must be the first run. Without it they
+                  may be a slice, as the example data is
+  -cosign         release, all: also re-check each release's Sigstore bundles with
+                  cosign, against the identity pinned in keys/signers.json
   -log URL        consistency: read tiles from URL instead of the record's url
   -q              print only failures
 
@@ -62,6 +81,7 @@ func main() {
 type options struct {
 	root, keys, logURL string
 	openssl, quiet     bool
+	complete, cosign   bool
 }
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -78,9 +98,18 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&o.logURL, "log", "", "")
 	fs.BoolVar(&o.openssl, "openssl", false, "")
 	fs.BoolVar(&o.quiet, "q", false, "")
+	fs.BoolVar(&o.complete, "complete", false, "")
+	fs.BoolVar(&o.cosign, "cosign", false, "")
 	if err := fs.Parse(args[1:]); err != nil {
 		fmt.Fprintf(stderr, "verify %s: %v\n\n%s", cmd, err, usage)
 		return 2
+	}
+	if cmd == "incidents" {
+		if fs.NArg() == 0 {
+			fmt.Fprintln(stderr, "verify incidents: name at least one file")
+			return 2
+		}
+		return report(stdout, check.Incidents(fs.Args(), time.Now()), o.quiet)
 	}
 	files, err := cleanAll(fs.Args())
 	if err != nil {
@@ -103,6 +132,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if o.openssl {
 		tsOpts.OpenSSL = &check.OpenSSL{Keys: keySrc, Prefix: keyPrefix}
 	}
+	ciaOpts := check.CIAOptions{Complete: o.complete, Release: check.ReleaseOptions{Cosign: o.cosign}}
 
 	var reports []*check.Report
 	switch cmd {
@@ -124,14 +154,27 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			newer = files[1]
 		}
 		reports = append(reports, check.FromLog(ctx, client, src, keys, files[0], newer, o.logURL))
-	case "all":
-		if strings.Contains(o.root, "://") {
-			fmt.Fprintln(stderr, "verify all: needs a local clone (-root DIR); a web server cannot list files")
+	case "release":
+		if len(files) == 0 {
+			fmt.Fprintln(stderr, "verify release: name at least one release directory")
 			return 2
 		}
-		reports, err = check.All(o.root, src, keys, tsOpts)
+		for _, f := range files {
+			reports = append(reports, check.Release(src, f, ciaOpts.Release))
+		}
+	case "cia", "all":
+		if strings.Contains(o.root, "://") {
+			fmt.Fprintf(stderr, "verify %s: listing files needs a clone of the repository: "+
+				"git clone https://github.com/diagnos-tech/audit (then -root DIR)\n", cmd)
+			return 2
+		}
+		if cmd == "cia" {
+			reports, err = check.CIAFiles(o.root, src, files, ciaOpts)
+		} else {
+			reports, err = check.AllWith(o.root, src, keys, tsOpts, ciaOpts)
+		}
 		if err != nil {
-			fmt.Fprintf(stderr, "verify all: %v\n", err)
+			fmt.Fprintf(stderr, "verify %s: %v\n", cmd, err)
 			return 2
 		}
 	default:

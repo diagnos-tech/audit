@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -20,6 +21,7 @@ type tree struct {
 	indexes    []string
 	state      bool
 	latest     bool
+	cia        ciaTree
 	strangers  []string // files that have no place under data/v1
 }
 
@@ -29,6 +31,11 @@ type tree struct {
 // summaries (state.json, latest.json, the month indexes) against the
 // records they summarise.
 func All(dir string, src record.Source, keys *Keyring, opts TimestampOptions) ([]*Report, error) {
+	return AllWith(dir, src, keys, opts, CIAOptions{})
+}
+
+// AllWith is All with options for the CIA record (see CIAOptions).
+func AllWith(dir string, src record.Source, keys *Keyring, opts TimestampOptions, ciaOpts CIAOptions) ([]*Report, error) {
 	t, err := walk(dir)
 	if err != nil {
 		return nil, err
@@ -90,6 +97,9 @@ func All(dir string, src record.Source, keys *Keyring, opts TimestampOptions) ([
 
 	s := summaries{src: src, tree: t, witness: recs, hours: hours, findings: findings}
 	reports = append(reports, s.check()...)
+	if !t.cia.empty() {
+		reports = append(reports, CIA(src, &t.cia, ciaOpts)...)
+	}
 	return reports, nil
 }
 
@@ -172,6 +182,30 @@ func walk(dir string) (*tree, error) {
 			t.state = true
 		case "latest":
 			t.latest = true
+		case "cia-run":
+			t.cia.runs = append(t.cia.runs, rel)
+		case "cia-incidents":
+			t.cia.snapshots = append(t.cia.snapshots, rel)
+		case "cia-day":
+			t.cia.days = append(t.cia.days, rel)
+		case "cia-summary":
+			t.cia.summary = true
+		case "cia-latest":
+			t.cia.latest = true
+		case "cia-incidents-view":
+			t.cia.view = true
+		case "cia-changes":
+			t.cia.changes = true
+		case "cia-changes-recent":
+			t.cia.recent = true
+		case "cia-incident-event":
+			t.cia.events = append(t.cia.events, rel)
+		case "sync":
+			t.cia.sync = true
+		case "release-verdict", "release-manifest", "release-evidence":
+			if dir := path.Dir(rel); !slices.Contains(t.cia.releaseDirs, dir) {
+				t.cia.releaseDirs = append(t.cia.releaseDirs, dir)
+			}
 		default:
 			t.strangers = append(t.strangers, rel)
 		}

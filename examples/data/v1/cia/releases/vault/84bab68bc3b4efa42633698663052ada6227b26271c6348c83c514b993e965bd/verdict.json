@@ -1,0 +1,53 @@
+{
+  "schema": "cia-release/v1",
+  "service": "vault",
+  "digest": "84bab68bc3b4efa42633698663052ada6227b26271c6348c83c514b993e965bd",
+  "checkedAt": "2026-09-28T16:21:09Z",
+  "result": "pass",
+  "code": "verified",
+  "reason": "Signature and SLSA provenance verified for the pinned identity; manifest agrees with /healthz.",
+  "claim": {
+    "url": "https://vault.diagnos.example/healthz",
+    "version": "0.1.29",
+    "commit": "f57c3047a9217ba271c175538b06882bcc3cad16"
+  },
+  "manifest": {
+    "version": "0.1.29",
+    "commit": "f57c3047a9217ba271c175538b06882bcc3cad16",
+    "files": 4,
+    "bytes": 2082566,
+    "served": 2
+  },
+  "signer": {
+    "issuer": "https://token.actions.githubusercontent.com",
+    "san": "https://github.com/diagnos-example/monorepo/.github/workflows/pipeline.yml@refs/heads/main",
+    "repository": "https://github.com/diagnos-example/monorepo",
+    "repositoryId": "100000001",
+    "ownerId": "100000000",
+    "ref": "refs/heads/main",
+    "commit": "f57c3047a9217ba271c175538b06882bcc3cad16",
+    "trigger": "push",
+    "runner": "github-hosted"
+  },
+  "transparency": {
+    "signature": {
+      "log": "rekor.example",
+      "index": 4000065,
+      "time": "2026-09-28T16:03:42Z"
+    },
+    "provenance": {
+      "log": "rekor.example",
+      "index": 4000130,
+      "time": "2026-09-28T16:03:43Z"
+    }
+  },
+  "files": {
+    "manifest": "data/v1/cia/releases/vault/84bab68bc3b4efa42633698663052ada6227b26271c6348c83c514b993e965bd/manifest.json",
+    "signature": null,
+    "provenance": null
+  },
+  "verifier": {
+    "name": "sigstore-go",
+    "version": "v1.3.0"
+  }
+}

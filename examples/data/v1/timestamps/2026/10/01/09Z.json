@@ -3,6 +3,10 @@
   "hour": "2026-10-01T09:00:00Z",
   "subject": {
     "hour": "2026-10-01T09:00:00Z",
+    "cia": {
+      "record": "data/v1/cia/runs/2026/10/01/0905Z.json",
+      "sha256": "57cea0f3aa109d45c40bd56c579f7544e3e99dff0e26498a85945238d58d9271"
+    },
     "logs": {
       "audit": {
         "origin": "transparency.example/audit/v1",
@@ -21,16 +25,16 @@
     },
     "prev": {
       "record": "data/v1/timestamps/2026/10/01/08Z.json",
-      "sha256": "ddfb5c621544f3d595f758bad4a342a00c968cc4e3bfdb4ee9b9dea83a24b204"
+      "sha256": "25722c083efc98280cf96b09326f73324a2aa6f9046a1fbc3d66fbcd1547b8bb"
     }
   },
-  "imprint": "feefcf6be062c1fe348ce73d6a4f7daefc70ed540d710e826e77d27821753f2d",
+  "imprint": "67f672b5201ac83a40219d6ba846adebc1307c091dbfade0847e60aeb00fea52",
   "token": {
     "provider": "example-tsa",
     "url": "https://tsa.example/tsr",
     "file": "data/v1/timestamps/2026/10/01/09Z.tsr",
-    "sha256": "76c115410258ffc61575495141fd36f485672ca04db31a8a09a3276ac2f731b5",
-    "genTime": "2026-10-01T09:00:07Z",
+    "sha256": "881c03d55cc1873988c1d92d47ce7b5f5605e440c79fe4779a29f86f2479e433",
+    "genTime": "2026-10-01T09:05:09Z",
     "serial": "1015",
     "policy": "1.3.6.1.4.1.32473.1.1",
     "tsa": "CN=Example TSA (example only - not a real TSA),O=diagnos audit examples",

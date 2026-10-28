@@ -3,6 +3,10 @@
   "hour": "2026-10-01T03:00:00Z",
   "subject": {
     "hour": "2026-10-01T03:00:00Z",
+    "cia": {
+      "record": "data/v1/cia/runs/2026/10/01/0300Z.json",
+      "sha256": "fdb737c2eec08275fcb74be55ddda896efc1631c7415241788bd78b7e45b47ee"
+    },
     "logs": {
       "audit": {
         "origin": "transparency.example/audit/v1",
@@ -21,10 +25,10 @@
     },
     "prev": {
       "record": "data/v1/timestamps/2026/10/01/02Z.json",
-      "sha256": "4b97365dc8429860f6ab1b715a7615b050b9ed8b122f72dd9f5960c1f80e36f0"
+      "sha256": "032b7f40bf3805948e6d6a7648e9c959b26faa0cddc9340446282f999d885e91"
     }
   },
-  "imprint": "dc1975a746dd460ca1a4f425b7e68c8d68c8631d06f7d01facb6c8f8ad993fb1",
+  "imprint": "851d7af8ebe90a91929e9ebd4c8c844e1cf43c88a8bb0a03cb8894923081c59c",
   "token": null,
   "attempts": [
     {

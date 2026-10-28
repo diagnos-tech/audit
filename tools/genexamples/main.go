@@ -1,11 +1,18 @@
 // Command genexamples writes the example data set under examples/: two logs
 // with realistic growth, witness records every time a tree grows, an hourly
 // RFC 3161 timestamp chain (with one provider fallback and one hour with no
-// token), and one equivocation finding, all signed with example keys.
+// token), and one equivocation finding, all signed with example keys. Beside
+// them it writes the CIA record: a run record for every five-minute slot of
+// the window (with an auditor gap), the incident snapshots and archived
+// releases they point at, and the day files, 90-day summary, latest headline,
+// incidents view and mirror cursor derived from them with the same projections
+// `verify cia` recomputes them with. The 88 days before the window are
+// scripted history that exists only in the views.
 //
-// The page loads it with ?data=examples. Nothing here is a real record:
-// every name uses the reserved .example domain and every key comes from a
-// public seed (keys.go). Run it from the repository root:
+// The incident files come from <out>/incidents (examples/incidents when run
+// from the repository root). Nothing here is a real record: every name uses
+// the reserved .example domain and every key comes from a public seed
+// (keys.go). Run it from the repository root:
 //
 //	go run ./tools/genexamples
 //
@@ -48,7 +55,10 @@ func generate(out string) (*sim, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s, s.writeSummaries()
+	if err := s.writeSummaries(); err != nil {
+		return nil, err
+	}
+	return s, s.cia.writeViews()
 }
 
 func simulate(out string) (*sim, error) {
@@ -62,6 +72,7 @@ func simulate(out string) (*sim, error) {
 	s := &sim{
 		w:          w,
 		rng:        rand.New(rand.NewPCG(2026, 10)),
+		nonces:     map[time.Time]uint64{},
 		witnessKey: witnessKey("witness.example/auditor/v1"),
 		idx:        map[string]*record.Index{},
 		tsaFails: map[time.Time]int{
@@ -119,11 +130,17 @@ func simulate(out string) (*sim, error) {
 		s.tsas = append(s.tsas, tsa)
 	}
 
+	if s.cia, err = newCIASim(w, filepath.Join(out, "incidents")); err != nil {
+		return nil, err
+	}
+	if err := s.cia.synthesize(); err != nil {
+		return nil, err
+	}
 	return s, s.run(start, end)
 }
 
 // writeSummaries writes what the witness rewrites on every commit: the
-// state, the summary the page reads first, and the month indexes.
+// state, the summary readers start from, and the month indexes.
 func (s *sim) writeSummaries() error {
 	updated := record.FormatTime(s.lastRun)
 	state := record.State{Schema: "state/v1", UpdatedAt: updated, Logs: map[string]record.StateLog{}, Timestamp: s.lastHour}

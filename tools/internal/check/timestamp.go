@@ -61,6 +61,7 @@ func Timestamp(src record.Source, path string, opts TimestampOptions) (*record.T
 	}
 
 	checkSubjectLogs(src, &rec, hour, r)
+	checkSubjectCIA(src, &rec, hour, r)
 	checkHourLink(src, &rec, hour, r)
 	checkToken(src, &rec, hour, r, opts)
 	return &rec, r
@@ -181,4 +182,36 @@ func checkToken(src record.Source, rec *record.Timestamp, hour time.Time, r *Rep
 func sum(b []byte) string {
 	s := sha256.Sum256(b)
 	return hex.EncodeToString(s[:])
+}
+
+// checkSubjectCIA verifies the link to the CIA run record, when the subject
+// has one: the file exists, hashes to the given SHA-256 and is a run record of
+// the hour or earlier.
+func checkSubjectCIA(src record.Source, rec *record.Timestamp, hour time.Time, r *Report) {
+	link := rec.Subject.CIA
+	if link == nil {
+		return
+	}
+	data, err := src.Read(link.Record)
+	if err != nil {
+		r.fail("subject cia", "%v", err)
+		return
+	}
+	var run record.CIARun
+	decodeErr := record.Decode(data, "cia-run/v1", &run)
+	slot, slotErr := record.ParseTime(run.Slot)
+	switch {
+	case record.Kind(link.Record) != "cia-run":
+		r.fail("subject cia", "%s is not a CIA run record path", link.Record)
+	case sum(data) != link.SHA256:
+		r.fail("subject cia", "%s hashes to %s, the subject says %s", link.Record, sum(data), link.SHA256)
+	case decodeErr != nil || slotErr != nil:
+		r.fail("subject cia", "%s is not a run record: %v %v", link.Record, decodeErr, slotErr)
+	case record.CIARunPath(slot) != link.Record:
+		r.fail("subject cia", "%s is the record of slot %s", link.Record, run.Slot)
+	case !slot.Before(hour.Add(time.Hour)):
+		r.fail("subject cia", "%s is a run after the hour", link.Record)
+	default:
+		r.pass("subject cia", "%s", link.Record)
+	}
 }

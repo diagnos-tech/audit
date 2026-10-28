@@ -53,6 +53,7 @@ type Timestamp struct {
 
 type Subject struct {
 	Hour string                `json:"hour"`
+	CIA  *Link                 `json:"cia,omitempty"`
 	Logs map[string]SubjectLog `json:"logs"`
 	Prev *Link                 `json:"prev"`
 }

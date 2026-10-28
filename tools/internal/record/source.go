@@ -21,9 +21,17 @@ const maxFile = 64 << 20
 // ErrNotExist is returned for a path the source does not have.
 var ErrNotExist = errors.New("file does not exist")
 
+// notFound is the error for a 404 from a web server. It matches ErrNotExist.
+type notFound struct{ path, root string }
+
+func (e notFound) Error() string { return e.path + ": not found at " + e.root + " (HTTP 404)" }
+
+func (notFound) Is(target error) bool { return target == ErrNotExist }
+
 // Source reads repository files by their repository path ("data/v1/...").
-// It is either a local clone or the published site, so the same commands
-// work with or without cloning.
+// It is either a local clone or a web server that serves the repository's
+// files at the same paths (raw GitHub, a bucket), so the same commands work
+// with or without cloning.
 type Source interface {
 	Read(path string) ([]byte, error)
 	String() string
@@ -107,7 +115,7 @@ func (h *httpSource) Read(p string) ([]byte, error) {
 	defer resp.Body.Close()
 	switch {
 	case resp.StatusCode == http.StatusNotFound:
-		return nil, fmt.Errorf("%w: %s", ErrNotExist, u)
+		return nil, notFound{c, h.base.String()}
 	case resp.StatusCode != http.StatusOK:
 		return nil, fmt.Errorf("GET %s: %s", u, resp.Status)
 	}

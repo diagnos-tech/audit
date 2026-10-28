@@ -1,0 +1,58 @@
+{
+  "schema": "release-manifest/v1",
+  "service": "frontend",
+  "version": "1.0.29+client.0.42.2",
+  "commit": "08cd92d8afef86359242ee60326cb84df2e78819",
+  "repository": "https://github.com/diagnos-example/monorepo",
+  "builtAt": "2026-10-01T09:41:12Z",
+  "files": [
+    {
+      "path": "_headers",
+      "sha256": "34ac122fd293084cf26a516111e7690fd46b943c9d96fce00449fdf0ea00382d",
+      "bytes": 612,
+      "served": null
+    },
+    {
+      "path": "_redirects",
+      "sha256": "2e7aae0239270bb918a0e38be25df15b1471448190184771467359c8db0abac9",
+      "bytes": 240,
+      "served": null
+    },
+    {
+      "path": "app/assets/client.css",
+      "sha256": "2fccf28e73ba170d80fed184dcd48f92f2be758bbcfe34a51e0fcfba3aea65d3",
+      "bytes": 48900,
+      "served": "/app/assets/client.css"
+    },
+    {
+      "path": "app/assets/client.js",
+      "sha256": "7a42a43a3003f798b1be153468b53e7778648507f291da5d35ebf2e9ed6bd16b",
+      "bytes": 612300,
+      "served": "/app/assets/client.js"
+    },
+    {
+      "path": "app/index.html",
+      "sha256": "58e4418dfe25ab490cc217bc54dcb03d05611ca52e635ae569573f1c9750d2b5",
+      "bytes": 3120,
+      "served": "/app/index.html"
+    },
+    {
+      "path": "favicon.svg",
+      "sha256": "605c40353c757b225d8f85cdc7951ebfa8fae3ebc3eac5357c6279e66e90b346",
+      "bytes": 880,
+      "served": "/favicon.svg"
+    },
+    {
+      "path": "index.html",
+      "sha256": "2403cfb805b47b87cd9c1cb9c3501195b86f0dd33523be10329c74f15363bfa8",
+      "bytes": 14330,
+      "served": "/index.html"
+    },
+    {
+      "path": "robots.txt",
+      "sha256": "04ca463e0cb55198e5c2909d131041d45553199743593cfe1786fdc22e39adc5",
+      "bytes": 120,
+      "served": "/robots.txt"
+    }
+  ]
+}

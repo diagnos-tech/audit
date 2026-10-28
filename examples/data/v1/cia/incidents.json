@@ -1,0 +1,183 @@
+{
+  "schema": "cia-incident-list/v1",
+  "declared": {
+    "snapshot": "data/v1/cia/incidents/2026/10/01/1155Z.json",
+    "commit": "d7361490a866534aea4f45266a111bef562f230e",
+    "readAt": "2026-10-01T11:55:02Z"
+  },
+  "incidents": [
+    {
+      "id": "2026-10-01-auto-status-i-1335",
+      "source": "auditor",
+      "categories": [
+        "I"
+      ],
+      "services": [
+        "status"
+      ],
+      "severity": "critical",
+      "status": "open",
+      "openedAt": "2026-10-01T13:35:00Z",
+      "startedAt": "2026-10-01T13:35:00Z",
+      "resolvedAt": null,
+      "updatedAt": "2026-10-01T13:40:00Z",
+      "reasons": [
+        "finding",
+        "halted"
+      ],
+      "events": 2,
+      "lastEvent": "data/v1/cia/incidents/events/2026/10/01/2026-10-01-auto-status-i-1335-2.json",
+      "postmortems": []
+    },
+    {
+      "id": "2026-10-01-auto-vault-a-0310",
+      "source": "auditor",
+      "categories": [
+        "A"
+      ],
+      "services": [
+        "vault"
+      ],
+      "severity": "high",
+      "status": "resolved",
+      "openedAt": "2026-10-01T03:20:00Z",
+      "startedAt": "2026-10-01T03:10:00Z",
+      "resolvedAt": "2026-10-01T03:30:00Z",
+      "updatedAt": "2026-10-01T03:35:00Z",
+      "reasons": [
+        "timeout"
+      ],
+      "events": 2,
+      "lastEvent": "data/v1/cia/incidents/events/2026/10/01/2026-10-01-auto-vault-a-0310-2.json",
+      "postmortems": [
+        "2026-10-01-vault-timeout-postmortem"
+      ]
+    },
+    {
+      "id": "2026-10-01-vault-timeout-postmortem",
+      "source": "declared",
+      "file": "incidents/2026-10-01-vault-timeout-postmortem.md",
+      "blob": "e23e48ae351404afb12336b84eaf58f0343bd0d2",
+      "title": {
+        "en": "Postmortem: vault did not answer for 20 minutes",
+        "pt-BR": "Análise: o vault ficou 20 minutos sem responder"
+      },
+      "summary": {
+        "en": "A database failover left the vault without a primary for 20 minutes. No exam was lost or exposed.",
+        "pt-BR": "Uma troca de primário do banco deixou o vault sem resposta por 20 minutos. Nenhum exame foi perdido nem exposto."
+      },
+      "services": [
+        "vault"
+      ],
+      "categories": [
+        "A"
+      ],
+      "severity": "high",
+      "status": "resolved",
+      "declaredAt": "2026-10-01T11:50:00Z",
+      "startedAt": "2026-10-01T03:10:00Z",
+      "resolvedAt": "2026-10-01T03:30:00Z",
+      "relates": "2026-10-01-auto-vault-a-0310",
+      "body": {
+        "en": "**Example data.** This postmortem is invented to show how a declared incident adds to an incident the\nauditor opened by itself (`relates`).\n\n### What happened\n\nAt 03:10 UTC the vault stopped answering. The auditor opened an incident at 03:20, after three failed\nfive-minute checks, and resolved it at 03:35, after two good ones.\n\n### Cause\n\nA scheduled failover of the database left the vault without a primary for 20 minutes.\n\n### What we changed\n\n1. Failovers now run in the quietest hour of the week, with the vault in read-only mode.\n2. The vault answers its health check from memory when the database is unavailable, so a failover is\n   visible as a degraded answer and not as a timeout.",
+        "pt-BR": "**Dado de exemplo.** Esta análise é inventada para mostrar como um incidente declarado complementa um\nincidente que o auditor abriu sozinho (`relates`).\n\n### O que aconteceu\n\nÀs 03:10 UTC o vault parou de responder. O auditor abriu um incidente às 03:20, depois de três\nverificações de cinco minutos falharem, e o resolveu às 03:35, depois de duas boas.\n\n### Causa\n\nUma troca programada de primário do banco de dados deixou o vault sem resposta por 20 minutos.\n\n### O que mudamos\n\n1. As trocas agora acontecem na hora mais calma da semana, com o vault em modo somente leitura.\n2. O vault responde ao teste de saúde pela memória quando o banco está indisponível, de modo que uma\n   troca aparece como resposta degradada e não como timeout."
+      }
+    },
+    {
+      "id": "2026-09-30-sign-session-ids-in-logs",
+      "source": "declared",
+      "file": "incidents/2026-09-30-sign-session-ids-in-logs.md",
+      "blob": "72fd72e1219bf66d488806e0b3413bffeb01c4f8",
+      "title": {
+        "en": "Signing session identifiers written to an internal log",
+        "pt-BR": "Identificadores de sessão de assinatura gravados num log interno"
+      },
+      "summary": {
+        "en": "For 17 hours an internal error log kept signing session identifiers. No document or personal data was exposed.",
+        "pt-BR": "Por 17 horas um log interno de erros guardou identificadores de sessão de assinatura. Nenhum documento ou dado pessoal foi exposto."
+      },
+      "services": [
+        "sign"
+      ],
+      "categories": [
+        "C"
+      ],
+      "severity": "medium",
+      "status": "resolved",
+      "declaredAt": "2026-09-30T18:10:00Z",
+      "startedAt": "2026-09-30T16:40:00Z",
+      "resolvedAt": "2026-10-01T09:30:00Z",
+      "relates": null,
+      "body": {
+        "en": "**Example data.** This incident is invented to show how a published incident looks.\n\n### What happened\n\nA change deployed at 16:40 UTC made the signing service write the identifier of failed signing\nsessions to its internal error log. The log is readable only by two engineers.\n\n### Impact\n\n- 41 session identifiers were written. Each expires after 30 minutes and cannot be used without\n  the signer's passkey.\n- No document, document hash or personal data was written.\n\n### What we did\n\n1. Removed the field from the log at 09:30 UTC the next day.\n2. Deleted the affected log lines.\n3. Added a test that fails when a session identifier reaches any log.",
+        "pt-BR": "**Dado de exemplo.** Este incidente é inventado para mostrar como fica um incidente publicado.\n\n### O que aconteceu\n\nUma mudança publicada às 16:40 UTC fez o serviço de assinatura gravar o identificador das sessões\nde assinatura que falharam no seu log interno de erros. O log só pode ser lido por dois\nengenheiros.\n\n### Impacto\n\n- 41 identificadores de sessão foram gravados. Cada um expira em 30 minutos e não pode ser usado\n  sem a passkey de quem assina.\n- Nenhum documento, hash de documento ou dado pessoal foi gravado.\n\n### O que fizemos\n\n1. Tiramos o campo do log às 09:30 UTC do dia seguinte.\n2. Apagamos as linhas afetadas.\n3. Acrescentamos um teste que falha quando um identificador de sessão chega a qualquer log."
+      }
+    },
+    {
+      "id": "2026-09-03-auto-sign-a-0425",
+      "source": "auditor",
+      "categories": [
+        "A"
+      ],
+      "services": [
+        "sign"
+      ],
+      "severity": "high",
+      "status": "resolved",
+      "openedAt": "2026-09-03T04:35:00Z",
+      "startedAt": "2026-09-03T04:25:00Z",
+      "resolvedAt": "2026-09-03T04:50:00Z",
+      "updatedAt": "2026-09-03T04:55:00Z",
+      "reasons": [
+        "connect-error"
+      ],
+      "events": 2,
+      "lastEvent": "data/v1/cia/incidents/events/2026/09/03/2026-09-03-auto-sign-a-0425-2.json",
+      "postmortems": []
+    },
+    {
+      "id": "2026-08-27-auto-sign-i-1410",
+      "source": "auditor",
+      "categories": [
+        "I"
+      ],
+      "services": [
+        "sign"
+      ],
+      "severity": "critical",
+      "status": "resolved",
+      "openedAt": "2026-08-27T14:10:00Z",
+      "startedAt": "2026-08-27T14:10:00Z",
+      "resolvedAt": "2026-08-27T15:05:00Z",
+      "updatedAt": "2026-08-27T15:10:00Z",
+      "reasons": [
+        "served-mismatch"
+      ],
+      "events": 2,
+      "lastEvent": "data/v1/cia/incidents/events/2026/08/27/2026-08-27-auto-sign-i-1410-2.json",
+      "postmortems": []
+    },
+    {
+      "id": "2026-08-12-auto-vault-a-0210",
+      "source": "auditor",
+      "categories": [
+        "A"
+      ],
+      "services": [
+        "vault"
+      ],
+      "severity": "high",
+      "status": "resolved",
+      "openedAt": "2026-08-12T02:20:00Z",
+      "startedAt": "2026-08-12T02:10:00Z",
+      "resolvedAt": "2026-08-12T02:35:00Z",
+      "updatedAt": "2026-08-12T02:40:00Z",
+      "reasons": [
+        "timeout"
+      ],
+      "events": 2,
+      "lastEvent": "data/v1/cia/incidents/events/2026/08/12/2026-08-12-auto-vault-a-0210-2.json",
+      "postmortems": []
+    }
+  ]
+}
