@@ -6,13 +6,14 @@ The keys needed to check every record. They are public by nature; publishing the
 | --- | --- | --- |
 | `logs/audit.vkey` | the `audit` log's checkpoint key, `transparency.diagnos.health/audit/v1` | signed-note Ed25519 (`0x01`) |
 | `logs/signs.vkey` | the `signs` log's checkpoint key, `transparency.diagnos.health/signs/v1` | signed-note Ed25519 (`0x01`) |
-| `witness/auditor.vkey` | the primary witness's key (Europe, the only one that publishes), `witness.diagnos.health/auditor/v1` | `cosignature/v1` Ed25519 (`0x04`) |
-| `witness/latam.vkey` | the second witness's key (Latin America), `witness.diagnos.health/latam/v1`; added later, see below | `cosignature/v1` Ed25519 (`0x04`) |
+| `witness/auditor.vkey` | the primary witness's key (Europe, the only one that publishes), `witness.diagnos.health/auditor/v1`; after a rotation, also the keys it replaced, see [Rotating a witness key](#rotating-a-witness-key) | `cosignature/v1` Ed25519 (`0x04`) |
+| `witness/latam.vkey` | the second witness's key (Latin America), `witness.diagnos.health/latam/v1`; added later, see below; after a rotation, also the keys it replaced | `cosignature/v1` Ed25519 (`0x04`) |
 | `tsa/<provider>.pem` | each time-stamping authority's CA chain | X.509, see [tsa/README.md](tsa/README.md) |
 | `signers.json` | for each audited service, the CI identity whose signature a release must carry | JSON, `signers/v1` ([schema](../schemas/v1/signers.schema.json)) |
 
 Each `.vkey` file is one line, `<name>+<key hash>+<base64(algorithm ‖ public key)>`, followed by a
-newline. [VERIFY.md](../VERIFY.md#2-decide-which-keys-to-trust) shows how to recompute the key hash
+newline; a witness's file can hold more than one, one per line, once the witness has rotated its key
+(see [Rotating a witness key](#rotating-a-witness-key)). [VERIFY.md](../VERIFY.md#2-decide-which-keys-to-trust) shows how to recompute the key hash
 and how to compare these keys with copies obtained elsewhere.
 
 **The log and witness keys are added when the witness goes live, by a person, in a reviewed pull
@@ -56,12 +57,51 @@ numeric ids come from `gh api repos/<owner>/<repo> --jq '.id, .owner.id'`.
 
 ## Rotation
 
-A key is never edited in place. A new log key comes with a new origin (`…/v2`) and a new witness key
-with a new name (`…/auditor/v2`, `…/latam/v2`), and gets its own file; old keys stay, because old
-records remain signed with them. `signers.json` is the exception, because it is not a key but a current policy: it
+A key is never edited in place. A new log key comes with a new origin (`…/v2`) and gets its own file;
+old keys stay, because old records remain signed with them. A new witness key comes with a new name
+(`…/auditor/v2`, `…/latam/v2`) and joins the witness's file, as the next section describes.
+`signers.json` is the exception, because it is not a key but a current policy: it
 always states who may sign a release now, and the release evidence archived under
 `data/v1/cia/releases/` keeps the identity that was valid when the release was judged (its
 `verdict.json` records it).
+
+## Rotating a witness key
+
+A witness's file lists every key the witness has signed with, one per line: the current key first,
+then the ones it replaced. Blank lines are ignored. Before a rotation the file is the single line it
+has always been:
+
+```
+witness.diagnos.health/latam/v1+<key hash>+<base64(algorithm ‖ public key)>
+```
+
+After it, the new key is added above the old one, which stays:
+
+```
+witness.diagnos.health/latam/v2+<key hash>+<base64(algorithm ‖ public key)>
+witness.diagnos.health/latam/v1+<key hash>+<base64(algorithm ‖ public key)>
+```
+
+**Old records keep verifying because a signature is matched to a key by its name and key hash, not by
+its place in the file.** A record written before the rotation names `…/latam/v1` and that key's
+hash, and the old key is still listed; a record written after it names `…/latam/v2`. Nothing already
+published has to be signed again, and a key stays listed for as long as any record it signed exists,
+which is forever: removing it makes those records fail. A file with a single key reads exactly as it
+did before.
+
+The verifier refuses a file that is not what this section describes, so that a mistake is a failure
+and never a quiet skip:
+
+- every key belongs to the same witness: the names are the same except for the version at the end
+  (`…/latam/v1`, `…/latam/v2`), so the key of another witness listed by mistake is refused;
+- no key is listed twice (the same name and key hash);
+- every line is a key in the form above: no comments, no text around it, no two keys on one line.
+
+A key listed in one witness's file never verifies another witness's signatures: Europe's keys are
+only ever offered for Europe's records and Latin America's for Latin America's. As with every change
+in this folder, a rotation is a reviewed pull request, and it re-checks the whole record before it is
+merged. Anything else that reads these files should do the same as the verifier: read them line by
+line, take the first key as the current one, and match a signature by name and key hash.
 
 ## Copies outside GitHub
 

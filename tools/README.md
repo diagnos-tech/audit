@@ -15,7 +15,7 @@ dependency is `golang.org/x/mod` (for `sumdb/note`).
 | [`internal/record`](internal/record) | the file types (`cia-run/v1` and `cia-run/v2`, the witnesses' measurements), their paths, strict decoding, and reading from a clone or from a web server that serves the same paths |
 | [`internal/merkle`](internal/merkle) | RFC 9162 hashing, consistency proofs (build and verify), an in-memory tree |
 | [`internal/tiles`](internal/tiles) | reads node hashes from a C2SP tlog-tiles log over HTTP (`tilestest` serves one in tests) |
-| [`internal/cosig`](internal/cosig) | C2SP `cosignature/v1` on top of `sumdb/note`, and the plain signed-note verifier of the same key (a witness signs its measurement with it) |
+| [`internal/cosig`](internal/cosig) | C2SP `cosignature/v1` on top of `sumdb/note`, the plain signed-note verifier of the same key (a witness signs its measurement with it), and a witness's key file (its current key and the keys it replaced) |
 | [`internal/jcs`](internal/jcs) | RFC 8785 canonical JSON, for the hourly imprint |
 | [`internal/rfc3161`](internal/rfc3161) | reads a `TimeStampResp`'s fields (the signature is left to OpenSSL) |
 

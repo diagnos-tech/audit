@@ -84,7 +84,8 @@ staticcheck ./tools/...                     # honnef.co/go/tools/cmd/staticcheck
 ```
 
 The parsers and the signature checks have fuzz targets (`FuzzDecodeRun`, `FuzzParseMeasurement`,
-`FuzzOpenMeasurement`, `FuzzCheckRunRecord`); `go test` runs their seed cases, and to let one run for a while:
+`FuzzOpenMeasurement`, `FuzzCheckRunRecord`, and `FuzzParseKeys` for the witness key files); `go test`
+runs their seed cases, and to let one run for a while:
 
 ```sh
 go test ./tools/internal/check -run '^$' -fuzz '^FuzzOpenMeasurement$' -fuzztime 60s

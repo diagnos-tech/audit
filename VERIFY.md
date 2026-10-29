@@ -75,8 +75,8 @@ checks on a fourth, the pinned signers:
 | File | Key | Format |
 | --- | --- | --- |
 | `keys/logs/audit.vkey`, `keys/logs/signs.vkey` | each log's checkpoint key | signed-note verifier key, Ed25519 (`0x01`) |
-| `keys/witness/auditor.vkey` | the primary witness's (Europe) cosignature key | `cosignature/v1` verifier key (`0x04`) |
-| `keys/witness/latam.vkey` | the second witness's (Latin America) cosignature key; added by a reviewed pull request once the second witness is live | `cosignature/v1` verifier key (`0x04`) |
+| `keys/witness/auditor.vkey` | the primary witness's (Europe) cosignature key, and the keys it replaced, one per line | `cosignature/v1` verifier key (`0x04`) |
+| `keys/witness/latam.vkey` | the second witness's (Latin America) cosignature key, and the keys it replaced, one per line; added by a reviewed pull request once the second witness is live | `cosignature/v1` verifier key (`0x04`) |
 | `keys/tsa/<provider>.pem` | the CA chain of each time-stamping authority | PEM certificates; see [keys/tsa/README.md](keys/tsa/README.md) |
 | `keys/signers.json` | for each service, the CI identity whose signature a release must carry | `signers/v1`; used in sections 10 and 11, see [keys/README.md](keys/README.md) |
 
@@ -84,6 +84,12 @@ Until `keys/witness/latam.vkey` exists the verifier treats the second witness's 
 is not a failure: it checks everything else about the second witness's records and says, with a
 warning, that their signatures were not checked. A key file that exists and does not match is a
 failure. The primary witness's key is never optional.
+
+A witness file can list more than one key, the current one first, once the witness has rotated its
+key ([Rotating a witness key](keys/README.md#rotating-a-witness-key)). A signature is matched to a
+key by name and key hash, so a record signed before the rotation verifies with the old key, which
+stays in the file, and one signed after it with the new key. A file that lists a key of another
+witness, the same key twice, or a line that is not a key is a failure.
 
 A verifier key reads `<name>+<key hash>+<base64(algorithm byte ‖ 32-byte public key)>`. Its key hash
 is not decoration: it is the first four bytes of `SHA-256(name ‖ "\n" ‖ algorithm ‖ key)`, and you
@@ -168,16 +174,18 @@ openssl pkeyutl -verify -pubin -inkey log.der -keyform DER -rawin -in body -sigf
 
 The witness's `cosignature/v1` signs a slightly different message: `cosignature/v1\n`, then
 `time <unix seconds>\n`, then the same body. The time travels inside the signature line, as eight
-big-endian bytes after the key hash:
+big-endian bytes after the key hash. The witness file can list several keys (section 2); the record
+says which one signed, by name and key hash, and `awk` picks that line:
 
 ```sh
 W=keys/witness/auditor.vkey
-WNAME=$(cut -d+ -f1 $W)
+WNAME=$(jq -r .cosignature.name $R)
+WKEY=$(awk -F+ -v name="$WNAME" -v hash="$(jq -r .cosignature.keyHash $R)" '$1 == name && $2 == hash' $W)
 jq -r .checkpoint.note $R | grep "^— $WNAME " | cut -d' ' -f3 | base64 -d > cosig.raw
 T=$(head -c 12 cosig.raw | tail -c 8 | od -An -tu8 --endian=big | tr -d ' ')
 date -u -d "@$T" +%FT%TZ          # must equal witnessedAt
 
-{ printf '302a300506032b6570032100' | xxd -r -p; cut -d+ -f3- $W | base64 -d | tail -c 32; } > wit.der
+{ printf '302a300506032b6570032100' | xxd -r -p; echo "$WKEY" | cut -d+ -f3- | base64 -d | tail -c 32; } > wit.der
 tail -c 64 cosig.raw > cosig.sig
 { printf 'cosignature/v1\ntime %s\n' "$T"; cat body; } > cosig.msg
 openssl pkeyutl -verify -pubin -inkey wit.der -keyform DER -rawin -in cosig.msg -sigfile cosig.sig
@@ -727,13 +735,16 @@ jq -r '.witnesses.latam.note' $R | grep '^measured '       # ... this line of th
 ```
 
 The signature is plain Ed25519 over the five lines of the note, so OpenSSL checks it the way section 3
-checks a checkpoint, with the witness's key (the same 32 bytes as in its `cosignature/v1` key):
+checks a checkpoint, with the witness's key (the same 32 bytes as in its `cosignature/v1` key). The
+note names, on its signature line, the key that signed it, and `awk` picks that key from the witness
+file, which can list several (section 2):
 
 ```sh
 W=keys/witness/latam.vkey
-NAME=$(cut -d+ -f1 $W)
+NAME=$(jq -r .witnesses.latam.note $R | grep '^— ' | cut -d' ' -f2)
+WKEY=$(awk -F+ -v name="$NAME" '$1 == name' $W)
 jq -r .witnesses.latam.note $R | awk '/^$/ { exit } { print }' > note.txt
-{ printf '302a300506032b6570032100' | xxd -r -p; cut -d+ -f3- $W | base64 -d | tail -c 32; } > w.der
+{ printf '302a300506032b6570032100' | xxd -r -p; echo "$WKEY" | cut -d+ -f3- | base64 -d | tail -c 32; } > w.der
 jq -r .witnesses.latam.note $R | grep "^— $NAME " | cut -d' ' -f3 | base64 -d | tail -c 64 > w.sig
 openssl pkeyutl -verify -pubin -inkey w.der -keyform DER -rawin -in note.txt -sigfile w.sig
 ```

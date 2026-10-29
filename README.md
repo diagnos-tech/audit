@@ -286,7 +286,9 @@ as `sha256sum` prints them.
 The keys in [`keys/`](keys) let anyone check the records, each witness's included. Checking a record against keys read from
 the same repository only shows that the repository is consistent with itself; for an independent
 check, compare them with the keys diagnos publishes elsewhere, or keep your own copy and pass it with
-`-keys`. [VERIFY.md](VERIFY.md#2-decide-which-keys-to-trust) lists where to look.
+`-keys`. [VERIFY.md](VERIFY.md#2-decide-which-keys-to-trust) lists where to look. A witness's file
+lists its current key and, after a rotation, the keys it replaced, so every record ever published
+keeps verifying ([keys/README.md](keys/README.md#rotating-a-witness-key)).
 [`keys/signers.json`](keys/signers.json) pins, for each service, the GitHub repository (by numeric
 id), workflow and branch whose signature a release must carry.
 

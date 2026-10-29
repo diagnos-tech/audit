@@ -4,4 +4,4 @@ The `verify` command. Opens a local clone or a web server that serves the reposi
 `internal/check`.
 
 - `main.go` — flags, command dispatch, the report and the exit status
-- `main_test.go` — the `incidents` command, usage errors, an empty repository, `cia -q` on every kind of CIA file, `release -cosign -q`
+- `main_test.go` — the `incidents` command, usage errors, an empty repository, `cia -q` on every kind of CIA file, `release -cosign -q`, a pinned keys directory after a key rotation

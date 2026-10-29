@@ -10,7 +10,7 @@ Every check the verifier runs. Each returns a `Report` of named results (ok, war
 - `finding.go` — a finding is evidence: two signed checkpoints that conflict
 - `timestamp.go` — an hourly record: imprint, subjects (including the CIA run record), chain, token
 - `openssl.go` — the token's TSA signature through `openssl ts -verify`
-- `keys.go` — the keyring: log and witness keys from a keys directory; a witness other than the primary one may not have a key yet
+- `keys.go` — the keyring: log keys and witness key files from a keys directory (a witness's current key and the keys it replaced); a witness other than the primary one may not have a key yet
 - `summary.go` — `state.json`, `latest.json` and the month indexes against the records
 - `report.go` — `Report`, `Result`, printing
 - `cia_all.go` — `CIA`, `CIAFiles`: runs, snapshots, releases and views, in order
@@ -33,6 +33,8 @@ Every check the verifier runs. Each returns a `Report` of named results (ok, war
 - `cia_test.go`, `cia_events_test.go` — dimension, field, latency, timings, snapshot, span, event, vantage and coverage rules
 - `cia_note_test.go`, `cia_measured_test.go`, `cia_combined_test.go` — the notes (with fuzz targets), the placeholder rule for an absent key, probes, peers, the combination and the split view
 - `cia_fuzz_test.go` — a fuzz target: whatever a run record is made of, checking it never panics
+- `keys_test.go` — the key file of a witness: rotated, another witness's key listed by mistake, a key twice, malformed lines, the name a record gives
+- `witness_rotation_test.go` — witness records, findings and measurement notes signed before and after a key rotation, and the keys that do not count
 - `testkeys_test.go` — witness keys derived from labels and a repository in memory, for those tests
 - `release.go`, `release_cosign.go` — an archived release: manifest, verdict, pinned identity, cosign
 - `release_test.go` — consistency failures, manifest rules, cosign through a fake binary

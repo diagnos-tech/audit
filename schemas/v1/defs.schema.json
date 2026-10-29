@@ -485,7 +485,7 @@
           "oneOf": [{ "type": "null" }, { "enum": ["timeout", "unreachable", "rejected", "signature", "invalid", "skew", "off"] }]
         },
         "note": {
-          "description": "The witness's signed note over this measurement. Its text is five lines: 'diagnos-witness/measurement/v1', 'witness <id>', 'slot <slot>', 'request <SHA-256 of the request note that asked for it, or none>', 'measured <SHA-256 of the RFC 8785 canonical JSON of measured>'. The key is the witness's key in keys/witness/ (the Ed25519 public key of its cosignature key, as a signed-note key).",
+          "description": "The witness's signed note over this measurement. Its text is five lines: 'diagnos-witness/measurement/v1', 'witness <id>', 'slot <slot>', 'request <SHA-256 of the request note that asked for it, or none>', 'measured <SHA-256 of the RFC 8785 canonical JSON of measured>'. The key is one of the witness's keys in keys/witness/<id>.vkey, the current one or a key it replaced (the Ed25519 public key of its cosignature key, as a signed-note key); the note names the one that signed it.",
           "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/signedNote" }]
         },
         "measured": { "oneOf": [{ "type": "null" }, { "$ref": "defs.schema.json#/$defs/witnessMeasured" }] }

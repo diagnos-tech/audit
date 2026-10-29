@@ -294,6 +294,9 @@ As chaves em [`keys/`](keys) permitem conferir os registros, os de cada testemun
 do próprio repositório só mostra que o repositório é coerente consigo mesmo; para uma conferência
 independente, compare-as com as chaves que a diagnos publica em outros lugares, ou guarde sua cópia e
 passe-a com `-keys`. O [VERIFY.md](VERIFY.md#2-decide-which-keys-to-trust) diz onde procurar.
+O arquivo de uma testemunha lista a chave atual e, depois de uma rotação, as chaves que ela substituiu,
+de modo que todo registro já publicado continua a verificar
+([keys/README.md](keys/README.md#rotating-a-witness-key)).
 O [`keys/signers.json`](keys/signers.json) fixa, para cada serviço, o repositório GitHub (pelo id
 numérico), o workflow e o branch cuja assinatura uma versão precisa ter.
 

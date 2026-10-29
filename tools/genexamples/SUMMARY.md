@@ -26,4 +26,4 @@ tests also check the verifier against every kind of tampering.
 - `v2_complete_test.go` — a history that begins with its first run verifies with `-complete`, regions included
 - `v2_budget_test.go` — the size budget of the records and views, and the cosignatures recomputed from the specification
 - `v2_tamper_test.go` — a number, a note, a combined verdict, a namespace, a split view, a peer mismatch changed: caught
-- `v2_keys_test.go` — an absent second witness key is not a failure, a wrong one is
+- `v2_keys_test.go` — an absent second witness key is not a failure, a wrong one is; after a key rotation the published records still verify
