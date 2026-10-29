@@ -1,0 +1,1 @@
+const n=[{id:"frontend",host:"diagnos.health",known:!0},{id:"vault",host:"vault.diagnos.health",known:!0},{id:"sign",host:"sign.diagnos.health",known:!0},{id:"status",host:"status.diagnos.health",known:!0}];function t(t){const s=new Set(n.map(n=>n.id)),o=[...t].filter(n=>!s.has(n)).sort().map(n=>({id:n,host:n,known:!1}));return[...n,...o]}export{n as S,t as s};

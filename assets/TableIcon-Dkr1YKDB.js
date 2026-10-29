@@ -1,0 +1,1 @@
+import{I as l}from"./Icon-DpFDw_dQ.js";import{c as m}from"./vendor-CMES7LHI.js";const o={front:"m224 48l-192 0q-3 0-6 2q-2 3-2 6l0 0l0 136q0 7 5 11q4 5 11 5l0 0l176 0q7 0 11-5q5-4 5-11l0 0l0-136q0-3-2-6q-3-2-6-2zm-184 64l40 0l0 32l-40 0zm56 0l120 0l0 32l-120 0zm120-48l0 32l-176 0l0-32zm-176 96l40 0l0 32l-40 0zm176 32l-120 0l0-32l120 0z"},q=()=>m(l,{icon:o});export{q as T};

@@ -1,0 +1,7 @@
+:root { color-scheme: light dark; }
+body { margin: 0; font: 16px/1.5 system-ui, sans-serif; background: Canvas; color: CanvasText; }
+main { max-width: 36rem; margin: 12vh auto 0; padding: 0 1.5rem; }
+img { display: block; height: 24px; width: auto; }
+h1 { font-size: 1.5rem; line-height: 1.25; margin: 2rem 0 1rem; }
+p { margin: 0 0 0.75rem; }
+a { color: LinkText; }

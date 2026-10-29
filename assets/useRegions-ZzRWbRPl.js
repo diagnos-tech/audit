@@ -1,0 +1,1 @@
+import{u as t}from"./context-DnvjxNbM.js";import{r as s}from"./regions-D0NkcwWM.js";import{u as o}from"./state-m6P6iKb2.js";function r(){const r=t(),a=o(),e=()=>s(r.latest());return{available:e,split:()=>a.regions()?e():[]}}export{r as u};

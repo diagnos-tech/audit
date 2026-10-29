@@ -1,0 +1,1 @@
+function n(n,o){return o>0?n>=o?100:Math.floor(1e4*n/o)/100:null}function o(n){let o=0,t=0;for(const r of n)"o"!==r&&"w"!==r||(o+=1),"o"!==r&&"w"!==r&&"f"!==r||(t+=1);return{up:o,measured:t}}function t([o,t,r]){return n((o??0)+(t??0),(o??0)+(t??0)+(r??0))}export{t as d,n as t,o as u};

@@ -1,0 +1,7 @@
+The diagnos name, the diagnos symbol and the diagnos logotype in this folder are trademarks of
+diagnos. They are not covered by the licence of this site's code or data: you may not use them
+to suggest endorsement or affiliation, or as the name or logo of your own product, without
+written permission.
+
+The files are copied unchanged from the official brand assets (apps/website/public/brand) and are
+never redrawn or edited by hand. The 180 px apple-touch-icon is the 512 px symbol, resized.

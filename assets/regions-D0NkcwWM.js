@@ -1,0 +1,1 @@
+const e=["latam","europe"],s="europe",t={europe:"auditor",latam:"latam"};function a(s){const t=s?.witnesses?Object.keys(s.witnesses):[],a=e.filter(e=>t.includes(e));return a.length>=2?a:[]}const n=e=>a(e).length>=2;export{t as K,s as P,e as R,n as h,a as r};

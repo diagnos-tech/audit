@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;self&#39; &#39;sha256-1I+1jei+K4uM+gf0YjlaocN096bIOma39Itc4wkRVRA=&#39;; style-src &#39;self&#39;; img-src &#39;self&#39; data:; font-src &#39;none&#39;; connect-src &#39;self&#39; https://raw.githubusercontent.com https://imgexam-auditor-production.s3.fr-par.scw.cloud; worker-src &#39;self&#39;; manifest-src &#39;self&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; upgrade-insecure-requests">
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Sem conexão · Status da diagnos</title>
+    <meta name="description" content="Esta página ainda não está disponível offline.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#07090d" media="(prefers-color-scheme: dark)">
+    <script>(function () {
+  var spec = {"key":"theme_mode","modes":["system","light","dark"],"attributes":{"mode":"data-mode","theme":"data-theme"},"colors":{"light":"#f8fafc","dark":"#07090d"},"langKey":"status.lang"};
+  var root = document.documentElement;
+  var query = null;
+  try {
+    query = matchMedia("(prefers-color-scheme: dark)");
+  } catch (error) {}
+  var mode = "system";
+  try {
+    var stored = localStorage.getItem(spec.key);
+    if (spec.modes.indexOf(stored) !== -1) mode = stored;
+  } catch (error) {}
+  function apply(current) {
+    var theme = current === "dark" || (current === "system" && query !== null && query.matches) ? "dark" : "light";
+    root.setAttribute(spec.attributes.mode, current);
+    root.setAttribute(spec.attributes.theme, theme);
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    for (var i = 0; i < metas.length; i++) metas[i].setAttribute("content", spec.colors[theme]);
+  }
+  apply(mode);
+  var asked = /[?&]lang=(pt-BR|pt|en)(?:&|$)/.exec(location.search);
+  var language = asked ? (asked[1] === "en" ? "en" : "pt-BR") : null;
+  if (!language) {
+    try {
+      var saved = localStorage.getItem(spec.langKey);
+      if (saved === "pt-BR" || saved === "en") language = saved;
+    } catch (error) {}
+  }
+  if (!language) language = String(navigator.language || "").toLowerCase().indexOf("pt") === 0 ? "pt-BR" : "en";
+  root.setAttribute("lang", language);
+  function follow() {
+    if (root.getAttribute(spec.attributes.mode) === "system") apply("system");
+  }
+  if (query !== null) {
+    if (query.addEventListener) query.addEventListener("change", follow);
+    else if (query.addListener) query.addListener(follow);
+  }
+})();</script>
+    <link rel="icon" href="/audit/brand/diagnos-symbol-gradient.svg" type="image/svg+xml">
+    <link rel="icon" href="/audit/brand/diagnos-symbol-256.png" type="image/png" sizes="256x256">
+    <link rel="apple-touch-icon" href="/audit/brand/apple-touch-icon.png">
+    <link rel="manifest" href="/audit/manifest.webmanifest">
+    <meta name="robots" content="noindex">
+    <link rel="alternate" type="application/rss+xml" title="diagnos status: all changes (RSS)" href="https://imgexam-auditor-production.s3.fr-par.scw.cloud/feeds/all.rss">
+    <link rel="alternate" type="application/atom+xml" title="diagnos status: all changes (Atom)" href="https://imgexam-auditor-production.s3.fr-par.scw.cloud/feeds/all.atom">
+    <link rel="alternate" type="application/feed+json" title="diagnos status: all changes (JSON Feed)" href="https://imgexam-auditor-production.s3.fr-par.scw.cloud/feeds/all.json">
+    <link rel="stylesheet" crossorigin href="/audit/assets/offline-CECahaE5.css" integrity="sha384-h3vafHbKnUp6AU1gp64aWbrN0f+pNRtmaQgROyG2IzFmMv3YnaAqkden+mtjGM0B">
+  </head>
+  <body>
+    <main class="page standalone" id="main">
+      <h1>Esta página ainda não está disponível offline</h1>
+      <p>Abra-a uma vez com conexão e ela fica salva no seu navegador. Enquanto isso, o registro também é servido de uma segunda cópia.</p>
+      <p><a class="btn" href="https://imgexam-auditor-production.s3-website.fr-par.scw.cloud/" rel="noopener noreferrer">Cópia na Scaleway</a></p>
+      <section lang="en" aria-labelledby="offline-en">
+        <h2 id="offline-en">This page is not available offline yet</h2>
+        <p>Open it once with a connection and it will be saved in your browser. Meanwhile the record is also served from a second copy.</p>
+        <p><a class="btn" href="https://imgexam-auditor-production.s3-website.fr-par.scw.cloud/" rel="noopener noreferrer">Scaleway copy</a></p>
+      </section>
+    </main>
+  </body>
+</html>

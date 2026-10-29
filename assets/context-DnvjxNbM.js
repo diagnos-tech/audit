@@ -1,0 +1,1 @@
+import{w as o,x as r}from"./vendor-CMES7LHI.js";const t=r();function n(){const r=o(t);if(!r)throw new Error("useRecord fora do RecordContext");return r}const s=r();function e(){const r=o(s);if(!r)throw new Error("useUi fora do UiContext");return r}export{t as R,s as U,e as a,n as u};
