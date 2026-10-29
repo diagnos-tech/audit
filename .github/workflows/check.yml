@@ -62,6 +62,7 @@ jobs:
           go test ./tools/internal/check -run '^$' -fuzz '^FuzzParseMeasurement$' -fuzztime 15s
           go test ./tools/internal/check -run '^$' -fuzz '^FuzzOpenMeasurement$' -fuzztime 15s
           go test ./tools/internal/check -run '^$' -fuzz '^FuzzCheckRunRecord$' -fuzztime 15s
+          go test ./tools/internal/cosig -run '^$' -fuzz '^FuzzParseKeys$' -fuzztime 15s
 
       # Both versions of the run record live in the same directory and the same chain; each is
       # validated against the schema its own "schema" field names.
