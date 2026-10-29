@@ -145,7 +145,7 @@ func signRaw(t testing.TB, k testKey, text string) string {
 
 // A key file that exists but is not a key is an error even for a witness whose
 // key may be missing, and a key with another name than the note's does not verify.
-func TestOptionalWitnessKey(t *testing.T) {
+func TestOptionalWitnessKeys(t *testing.T) {
 	good := newTestKey(t, "witness.example/latam/v1", "latam")
 	for _, c := range []struct {
 		name    string
@@ -161,39 +161,46 @@ func TestOptionalWitnessKey(t *testing.T) {
 		{"a file that is not a key", memSource{"keys/witness/latam.vkey": []byte("TODO\n")}, "latam", false, "malformed witness vkey"},
 		{"a key whose hash does not match", memSource{"keys/witness/latam.vkey": []byte(strings.Replace(good.vkey, "+", "+00", 1))}, "latam", false, "malformed"},
 	} {
-		v, absent, err := NewKeyring(c.src, "keys/").OptionalWitnessKey(c.witness, "")
+		v, absent, err := NewKeyring(c.src, "keys/").OptionalWitnessKeys(c.witness, "")
 		switch {
 		case absent != c.absent, (err == nil) != (c.wantErr == ""), err != nil && !strings.Contains(err.Error(), c.wantErr):
 			t.Errorf("%s: key %v absent %v err %v", c.name, v != nil, absent, err)
 		}
 	}
-	if _, _, err := NewKeyring(memSource{"keys/witness/latam.vkey": []byte(good.vkey)}, "keys/").OptionalWitnessKey("latam", "witness.example/other/v1"); err == nil {
+	if _, _, err := NewKeyring(memSource{"keys/witness/latam.vkey": []byte(good.vkey)}, "keys/").OptionalWitnessKeys("latam", "witness.example/other/v1"); err == nil {
 		t.Error("a key with another name than the one asked for was accepted")
 	}
 }
 
 // Whatever a note is turned into, it is never accepted with another text than
-// the one that was signed.
+// the one that was signed. The witness has rotated its key: the file lists the
+// current key and the previous one, and a note signed by either is accepted.
 func FuzzOpenMeasurement(f *testing.F) {
-	key := newTestKey(f, "witness.example/latam/v1", "latam")
+	previous := newTestKey(f, "witness.example/latam/v1", "latam")
+	current := newTestKey(f, "witness.example/latam/v2", "latam, the next key")
 	digest, _ := measurementDigest([]byte(testMeasured))
-	valid := signNote(f, key, "latam", testSlot, strings.Repeat("c", 64), digest)
+	valid := signNote(f, previous, "latam", testSlot, strings.Repeat("c", 64), digest)
+	validNext := signNote(f, current, "latam", testSlot, strings.Repeat("c", 64), digest)
 	signedText, _, _ := strings.Cut(valid, "\n\n")
 	signedText += "\n"
-	verifier, err := cosig.NewVerifier(key.vkey)
+	keys, err := cosig.ParseKeys(keyFile(current, previous))
 	if err != nil {
 		f.Fatal(err)
 	}
 	f.Add(valid)
+	f.Add(validNext)
 	f.Add(valid + "\u2014 other AAAAAAAA\n")
 	f.Add(strings.Replace(valid, "slot 2026", "slot 2027", 1))
 	f.Add("")
 	f.Fuzz(func(t *testing.T, s string) {
-		text, err := openMeasurement(verifier, false, s)
+		text, signer, err := openMeasurement(keys, false, s)
 		if err == nil && text != signedText {
 			t.Errorf("accepted %q with the text %q, not the signed one %q", s, text, signedText)
 		}
+		if err == nil && signer != previous.name && signer != current.name {
+			t.Errorf("accepted %q as signed by %q, which is not one of the keys", s, signer)
+		}
 		// Without the key the text is read as it stands: it must not panic, whatever it is.
-		_, _ = openMeasurement(verifier, true, s)
+		_, _, _ = openMeasurement(keys, true, s)
 	})
 }

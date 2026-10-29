@@ -45,22 +45,24 @@ func Finding(src record.Source, keys *Keyring, path string) (*record.Finding, *R
 		r.fail("witnessed", "%v", err)
 		return &f, r
 	}
-	witKey, absent, err := keys.OptionalWitnessKey(wid, name)
+	witKeys, absent, err := keys.OptionalWitnessKeys(wid, name)
 	if err != nil {
 		r.fail("witness key", "%v", err)
 		return &f, r
 	}
-	signers := []note.Verifier{logKey}
+	// The log must have signed the witnessed checkpoint, and so must one of the
+	// witness's keys: its current one, or one it replaced.
+	var cosigners []note.Verifier
 	if absent {
 		r.warn("witness key", "%s is not published yet: the cosignature on the witnessed checkpoint is not checked", WitnessKeyFileOf(wid))
 	} else {
-		signers = append(signers, witKey)
+		cosigners = witKeys.Verifiers()
 	}
-	witnessed, ok := evidenceHead(f.Witnessed, "witnessed", r, signers...)
+	witnessed, ok := evidenceHead(f.Witnessed, "witnessed", r, []note.Verifier{logKey}, cosigners)
 	if !ok {
 		return &f, r
 	}
-	observed, ok := evidenceHead(f.Observed, "observed", r, logKey)
+	observed, ok := evidenceHead(f.Observed, "observed", r, []note.Verifier{logKey}, nil)
 	if !ok {
 		return &f, r
 	}
@@ -94,8 +96,8 @@ func Finding(src record.Source, keys *Keyring, path string) (*record.Finding, *R
 	return &f, r
 }
 
-func evidenceHead(e record.Evidence, name string, r *Report, keys ...note.Verifier) (head, bool) {
-	n, err := openNote(e.Note, keys...)
+func evidenceHead(e record.Evidence, name string, r *Report, required, oneOf []note.Verifier) (head, bool) {
+	n, err := openNoteBy(e.Note, required, oneOf)
 	if err != nil {
 		r.fail(name, "%v", err)
 		return head{}, false
@@ -105,7 +107,11 @@ func evidenceHead(e record.Evidence, name string, r *Report, keys ...note.Verifi
 		r.fail(name, "the note does not state size %d root %s (%v)", e.Size, e.Root, err)
 		return head{}, false
 	}
-	r.pass(name, "size %d root %s, signed by %d required key(s)", e.Size, short(e.Root), len(keys))
+	signers := len(required)
+	if len(oneOf) > 0 {
+		signers++
+	}
+	r.pass(name, "size %d root %s, signed by %d required key(s)", e.Size, short(e.Root), signers)
 	return h, true
 }
 

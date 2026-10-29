@@ -54,7 +54,7 @@ func signedHead(src record.Source, keys *Keyring, wid, path string, r *Report) (
 		r.fail("log key", "%v", err)
 		return rec, head{}, false
 	}
-	witKey, absent, err := keys.OptionalWitnessKey(wid, rec.Cosignature.Name)
+	witKeys, absent, err := keys.OptionalWitnessKeys(wid, rec.Cosignature.Name)
 	if err != nil {
 		r.fail("witness key", "%v", err)
 		return rec, head{}, false
@@ -63,7 +63,7 @@ func signedHead(src record.Source, keys *Keyring, wid, path string, r *Report) (
 	if absent {
 		n, err = openNote(rec.Checkpoint.Note, logKey)
 	} else {
-		n, err = openNote(rec.Checkpoint.Note, logKey, witKey)
+		n, err = openNoteBy(rec.Checkpoint.Note, []note.Verifier{logKey}, witKeys.Verifiers())
 	}
 	if err != nil {
 		r.fail("signatures", "%v", err)
@@ -71,7 +71,7 @@ func signedHead(src record.Source, keys *Keyring, wid, path string, r *Report) (
 	}
 	r.pass("log signature", "%s (key %08x)", logKey.Name(), logKey.KeyHash())
 
-	if !cosignatureOK(n, witKey, absent, rec, wid, r) {
+	if !cosignatureOK(n, witKeys, absent, rec, wid, r) {
 		return rec, head{}, false
 	}
 
@@ -93,12 +93,13 @@ func signedHead(src record.Source, keys *Keyring, wid, path string, r *Report) (
 }
 
 // cosignatureOK checks the witness's cosignature line against the record: its
-// time is witnessedAt and its key hash the one the record names. With the
-// witness's key it has been verified already; without it (the key is not
-// published yet) the line is read as it stands and the report says that its
-// signature was not checked.
-func cosignatureOK(n *note.Note, key *cosig.Verifier, absent bool, rec *record.Witness, wid string, r *Report) bool {
+// time is witnessedAt and its key the one the record names. With the witness's
+// keys it has been verified already; without them (the keys are not published
+// yet) the line is read as it stands and the report says that its signature
+// was not checked.
+func cosignatureOK(n *note.Note, keys *cosig.KeySet, absent bool, rec *record.Witness, wid string, r *Report) bool {
 	var sig note.Signature
+	var name string
 	var hash uint32
 	if absent {
 		found := false
@@ -111,9 +112,10 @@ func cosignatureOK(n *note.Note, key *cosig.Verifier, absent bool, rec *record.W
 			r.fail("cosignature", "the note carries no signature by %s", rec.Cosignature.Name)
 			return false
 		}
-		hash = sig.Hash
+		name, hash = sig.Name, sig.Hash
 	} else {
-		sig, hash = *findSig(n, key), key.KeyHash()
+		key := signingKey(n, keys, rec.Cosignature)
+		sig, name, hash = *findSig(n, key), key.Name(), key.KeyHash()
 	}
 	signedAt, err := cosig.Time(sig)
 	switch {
@@ -123,6 +125,9 @@ func cosignatureOK(n *note.Note, key *cosig.Verifier, absent bool, rec *record.W
 	case record.FormatTime(signedAt) != rec.WitnessedAt:
 		r.fail("cosignature", "signed at %s, but witnessedAt says %s", record.FormatTime(signedAt), rec.WitnessedAt)
 		return false
+	case name != rec.Cosignature.Name:
+		r.fail("cosignature", "signed by %s, but the record says %s", name, rec.Cosignature.Name)
+		return false
 	case fmt.Sprintf("%08x", hash) != rec.Cosignature.KeyHash:
 		r.fail("cosignature", "key hash is %08x, the record says %s", hash, rec.Cosignature.KeyHash)
 		return false
@@ -130,8 +135,29 @@ func cosignatureOK(n *note.Note, key *cosig.Verifier, absent bool, rec *record.W
 		r.warn("cosignature", "%s at %s; its signature is not checked: %s is not published yet", rec.Cosignature.Name, rec.WitnessedAt, WitnessKeyFileOf(wid))
 		return true
 	}
-	r.pass("cosignature", "%s at %s", key.Name(), rec.WitnessedAt)
+	r.pass("cosignature", "%s at %s", name, rec.WitnessedAt)
 	return true
+}
+
+// signingKey is the key of the witness that signed n, which has been opened
+// with those keys and carries a valid signature by at least one of them. A
+// witness may sign with its new key and its old one while it rotates; then the
+// one the record names counts. When none is the one the record names, the
+// first that signed does, so that the record is held to what the note carries.
+func signingKey(n *note.Note, keys *cosig.KeySet, named record.Cosignature) *cosig.Verifier {
+	var first *cosig.Verifier
+	for _, k := range keys.Keys() {
+		if findSig(n, k) == nil {
+			continue
+		}
+		if k.Name() == named.Name && fmt.Sprintf("%08x", k.KeyHash()) == named.KeyHash {
+			return k
+		}
+		if first == nil {
+			first = k
+		}
+	}
+	return first
 }
 
 func readWitness(src record.Source, wid, path string, r *Report) (*record.Witness, bool) {

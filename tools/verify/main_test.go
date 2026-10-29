@@ -3,10 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/diagnos-tech/audit/tools/internal/cosig"
 )
 
 func exec(args ...string) (code int, out, errOut string) {
@@ -137,6 +140,76 @@ func TestWitnessCommandsFollowTheNamespace(t *testing.T) {
 	code, out, _ = exec("cia", "-q", "-root", root, "-keys", keys, "data/v1/cia/runs/2026/10/01/1105Z.json")
 	if code != 0 || !strings.Contains(out, "is not published yet") {
 		t.Errorf("an absent key on a run record: exit %d\n%s", code, out)
+	}
+}
+
+// A pinned keys directory whose witness file lists a new key first and the key
+// the records were signed with after it: the records still verify, from either
+// namespace and in a run record. Without the old key, or with the other
+// witness's key in the file, they do not.
+func TestPinnedKeysDirectoryAfterARotation(t *testing.T) {
+	root := filepath.Join("..", "..", "examples")
+	keysWith := func(latam string) string {
+		dir := t.TempDir()
+		for _, f := range []string{"witness/auditor.vkey", "logs/audit.vkey", "logs/signs.vkey"} {
+			data, err := os.ReadFile(filepath.Join(root, "keys", f))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, f)), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, f), data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := os.WriteFile(filepath.Join(dir, "witness/latam.vkey"), []byte(latam), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return dir
+	}
+	read := func(f string) string {
+		data, err := os.ReadFile(filepath.Join(root, "keys", f))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	pub, _, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := cosig.VKey("witness.example/latam/v2", pub)
+	previous, europe := read("witness/latam.vkey"), read("witness/auditor.vkey")
+
+	record := "data/v1/witnesses/latam/audit/witness/2026/10/01/102507Z.json"
+	run := "data/v1/cia/runs/2026/10/01/1105Z.json"
+	for _, c := range []struct {
+		name     string
+		file     string
+		code     int
+		contains string
+		alsoRun  bool // check the run record too: its note is signed with the same key
+	}{
+		{"the file as it was", previous, 0, "OK", true},
+		{"the new key first, the old one after it", next + "\n" + previous, 0, "OK", true},
+		{"blank lines between them", "\n" + next + "\n\n" + previous + "\n\n", 0, "OK", false},
+		{"the old key dropped", next + "\n", 1, "witness.example/latam/v2", true},
+		{"the other witness's key listed", next + "\n" + previous + europe, 1, "is not a key of witness.example/latam", false},
+		{"the old key twice", next + "\n" + previous + previous, 1, "is already listed on line 2", false},
+		{"a line that is not a key", next + "\n" + previous + "pending\n", 1, "line 3: cosig: malformed witness vkey", false},
+	} {
+		dir := keysWith(c.file)
+		cmds := [][]string{{"witness", "-q", "-root", root, "-keys", dir, record}}
+		if c.alsoRun {
+			cmds = append(cmds, []string{"cia", "-q", "-root", root, "-keys", dir, run})
+		}
+		for _, args := range cmds {
+			code, out, errOut := exec(args...)
+			if code != c.code || !strings.Contains(out, c.contains) {
+				t.Errorf("%s: verify %s: exit %d, want %d with %q\n%s%s", c.name, args[0], code, c.code, c.contains, out, errOut)
+			}
+		}
 	}
 }
 

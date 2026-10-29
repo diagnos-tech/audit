@@ -9,7 +9,8 @@ import (
 // The witnesses of a run record. Europe is the primary witness: it is the only
 // clock and the only publisher, so every run record has its entry. Its key
 // lives in keys/witness/auditor.vkey for historical reasons; every other
-// witness's key is keys/witness/<id>.vkey.
+// witness's key is keys/witness/<id>.vkey. A file holds the witness's current
+// key and the keys it replaced, one per line.
 const (
 	WitnessEurope = "europe"
 	WitnessLatam  = "latam"

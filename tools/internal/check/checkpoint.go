@@ -4,11 +4,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
 	"golang.org/x/mod/sumdb/note"
 
+	"github.com/diagnos-tech/audit/tools/internal/cosig"
 	"github.com/diagnos-tech/audit/tools/internal/merkle"
 )
 
@@ -23,16 +25,60 @@ type head struct {
 // one of the given keys. Signatures by other keys (other witnesses) are
 // allowed and ignored.
 func openNote(text string, keys ...note.Verifier) (*note.Note, error) {
-	n, err := note.Open([]byte(text), note.VerifierList(keys...))
+	return openNoteBy(text, keys, nil)
+}
+
+// openNoteBy is openNote with one more requirement: a valid signature by at
+// least one of oneOf, the keys of a single witness, which are its current key
+// and the keys it replaced. A signature is matched to a key by name and key
+// hash, so a note signed by a previous key verifies as long as the key is
+// listed, and a signature by a key that is not listed is not one.
+func openNoteBy(text string, required, oneOf []note.Verifier) (*note.Note, error) {
+	known := append(slices.Clone(required), oneOf...)
+	n, err := note.Open([]byte(text), note.VerifierList(known...))
 	if err != nil {
 		return nil, err
 	}
-	for _, k := range keys {
+	for _, k := range required {
 		if findSig(n, k) == nil {
 			return nil, fmt.Errorf("no valid signature by %s", k.Name())
 		}
 	}
+	if len(oneOf) > 0 && !slices.ContainsFunc(oneOf, func(k note.Verifier) bool { return findSig(n, k) != nil }) {
+		return nil, fmt.Errorf("no valid signature by %s%s", keyNames(oneOf), unlistedSignatures(n, oneOf))
+	}
 	return n, nil
+}
+
+// keyNames names one key, or says "any of" several.
+func keyNames(keys []note.Verifier) string {
+	names := make([]string, len(keys))
+	for i, k := range keys {
+		names[i] = k.Name()
+	}
+	if len(names) == 1 {
+		return names[0]
+	}
+	return "any of " + strings.Join(names, ", ")
+}
+
+// unlistedSignatures says which signatures the note carries by keys of the
+// same witness that the key file does not list: the way a record fails when a
+// key was removed from the file after a rotation.
+func unlistedSignatures(n *note.Note, listed []note.Verifier) string {
+	var found []string
+	for _, s := range n.UnverifiedSigs {
+		for _, k := range listed {
+			if cosig.Family(s.Name) == cosig.Family(k.Name()) {
+				found = append(found, fmt.Sprintf("%s (key hash %08x)", s.Name, s.Hash))
+				break
+			}
+		}
+	}
+	if len(found) == 0 {
+		return ""
+	}
+	return "; the note is signed by " + strings.Join(found, ", ") + ", which the key file does not list"
 }
 
 func findSig(n *note.Note, k note.Verifier) *note.Signature {

@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/mod/sumdb/note"
 
@@ -26,12 +28,20 @@ func (m memSource) Read(p string) ([]byte, error) {
 
 func (m memSource) String() string { return "memory" }
 
-// testKey is a witness key derived from a label, with the signer of its notes
-// and its vkey in the form keys/witness publishes.
+// testKey is a key derived from a label, with the signer of its notes and its
+// vkey in the form keys/witness publishes (vkey) and as a plain signed-note
+// key (plain), which is how a log's key is published.
 type testKey struct {
 	name   string
+	priv   ed25519.PrivateKey
 	signer note.Signer
 	vkey   string
+	plain  string
+}
+
+// cosigner signs checkpoints as cosignature/v1, stamped with at.
+func (k testKey) cosigner(at time.Time) note.Signer {
+	return cosig.NewSigner(k.name, k.priv, func() time.Time { return at })
 }
 
 func newTestKey(t testing.TB, name, label string) testKey {
@@ -49,8 +59,7 @@ func newTestKey(t testing.TB, name, label string) testKey {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = vkey
-	return testKey{name: name, signer: signer, vkey: cosig.VKey(name, pub)}
+	return testKey{name: name, priv: priv, signer: signer, vkey: cosig.VKey(name, pub), plain: vkey}
 }
 
 // keysWith is a keyring over a repository that publishes the given witness keys.
@@ -60,4 +69,20 @@ func keysWith(published map[string]testKey) *Keyring {
 		src["keys/"+WitnessKeyFileOf(id)] = []byte(k.vkey + "\n")
 	}
 	return NewKeyring(src, "keys/")
+}
+
+// keyFile is the text of a witness key file that lists the keys, the current
+// one first, one per line.
+func keyFile(keys ...testKey) string {
+	var b strings.Builder
+	for _, k := range keys {
+		b.WriteString(k.vkey + "\n")
+	}
+	return b.String()
+}
+
+// keysWithFile is a keyring over a repository whose key file of the witness
+// holds exactly text.
+func keysWithFile(witness, text string) *Keyring {
+	return NewKeyring(memSource{"keys/" + WitnessKeyFileOf(witness): []byte(text)}, "keys/")
 }

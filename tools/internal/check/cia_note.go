@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/mod/sumdb/note"
 
+	"github.com/diagnos-tech/audit/tools/internal/cosig"
 	"github.com/diagnos-tech/audit/tools/internal/jcs"
 	"github.com/diagnos-tech/audit/tools/internal/record"
 )
@@ -74,12 +75,12 @@ func measurementDigest(measuredRaw []byte) (string, error) {
 // lines are still held to the entry, and the report says that nobody checked
 // the signature.
 func checkMeasurementNote(keys *Keyring, id string, e record.WitnessEntry, slot string, r *Report) {
-	key, absent, err := keys.OptionalWitnessKey(id, "")
+	witKeys, absent, err := keys.OptionalWitnessKeys(id, "")
 	if err != nil {
 		r.fail("note "+id, "%v", err)
 		return
 	}
-	text, err := openMeasurement(key, absent, *e.Note)
+	text, signer, err := openMeasurement(witKeys, absent, *e.Note)
 	if err != nil {
 		r.fail("note "+id, "%v", err)
 		return
@@ -107,28 +108,30 @@ func checkMeasurementNote(keys *Keyring, id string, e record.WitnessEntry, slot 
 	case absent:
 		r.warn("note "+id, "slot, request and measured digest agree with the entry; the signature is not checked: %s is not published yet", WitnessKeyFileOf(id))
 	default:
-		r.pass("note "+id, "signed by %s; slot, request and measured digest %s agree with the entry", key.Name(), short(digest))
+		r.pass("note "+id, "signed by %s; slot, request and measured digest %s agree with the entry", signer, short(digest))
 	}
 }
 
-// openMeasurement returns the text of the note: verified with the witness's
-// key, or, without the key, as the note states it.
-func openMeasurement(key interface{ NoteVerifier() (note.Verifier, error) }, absent bool, text string) (string, error) {
+// openMeasurement returns the text of the note and the name of the key that
+// signed it: verified with one of the witness's keys, the current one or one
+// it replaced, or, without the keys, as the note states it (and then there is
+// no signer to name).
+func openMeasurement(keys *cosig.KeySet, absent bool, text string) (body, signer string, err error) {
 	if absent {
 		_, err := note.Open([]byte(text), nil)
 		var unverified *note.UnverifiedNoteError
 		if errors.As(err, &unverified) {
-			return unverified.Note.Text, nil
+			return unverified.Note.Text, "", nil
 		}
-		return "", fmt.Errorf("the note is malformed: %v", err)
+		return "", "", fmt.Errorf("the note is malformed: %v", err)
 	}
-	v, err := key.NoteVerifier()
+	vs, err := keys.NoteVerifiers()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	n, err := note.Open([]byte(text), note.VerifierList(v))
+	n, err := note.Open([]byte(text), note.VerifierList(vs...))
 	if err != nil {
-		return "", fmt.Errorf("the signature does not verify with %s: %v", v.Name(), err)
+		return "", "", fmt.Errorf("the signature does not verify with %s: %v", keyNames(vs), err)
 	}
-	return n.Text, nil
+	return n.Text, n.Sigs[0].Name, nil
 }
